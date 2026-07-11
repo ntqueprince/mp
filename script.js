@@ -1,4 +1,4 @@
-﻿/* =========================================================
+/* =========================================================
    PB MAIL HELPER PRO — script.js
    Vanilla JS. No frameworks.
    ========================================================= */
@@ -37,7 +37,8 @@ const DOC_MAP = [
   { keys: ["cng", "cng invoice"], out: "CNG INVOICE" },
   { keys: ["noc"], out: "NOC" },
   { keys: ["fitness", "fitness certificate"], out: "FITNESS CERTIFICATE" },
-  { keys: ["form35", "form 35"], out: "FORM 35" }
+  { keys: ["form35", "form 35"], out: "FORM 35" },
+  { keys: ["pf", "proposal form", "prosal form", "proposal", "prosal"], out: "PROPOSAL FORM" }
 ];
 
 function normalizeDocument(raw) {
@@ -144,7 +145,7 @@ const mailTemplates = [
       "",
       "Please find attached the Endorsed soft copy of your policy.",
       "",
-      "We wish to inform you that you need to keep your original soft copy along with the Endorsed copy for future."
+      "We request you to kindly keep the Endorsed copy along with your original policy copy for future reference."
     ].join("\n")
   },
 
@@ -305,6 +306,31 @@ const mailTemplates = [
     ].join("\n")
   },
 
+  /* ---------- POLICY START PENDING ---------- */
+  {
+    id: "policy_start_pending",
+    header: "POLICY START PENDING",
+    description: "Endorsement request can be raised after policy start date",
+    keywords: ["policy start", "policy not started", "start date", "before policy start", "endorsement after start", "endorsement not allowed", "request after start", "policy start pending", "endorsement pending", "insurer not allow"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your request.",
+      "",
+      "We would like to inform you that your endorsement request cannot be processed before the policy start date, as the insurance company allows such endorsement requests only after the policy has started.",
+      "",
+      "We request you to kindly raise the endorsement request once the policy is active.",
+      "",
+      "We would like to apprise you that the turnaround time for getting the changes made in your policy copy can take up to 10 days.",
+      "",
+      "We would like to update you that there may be charges and inspection applicable, which shall be communicated to you in future communication.",
+      "",
+      "If any documents are applicable, we will update you accordingly.",
+      "",
+      "We request you to kindly keep the Endorsed copy along with your original policy copy for future reference."
+    ].join("\n")
+  },
   /* ---------- BAJAJ OT ---------- */
   {
     id: "insured_person_change",
@@ -601,9 +627,14 @@ function buildRF() {
   if (s.forwarded) parts.push("We would like to inform you that we have forwarded your request to the insurance company.");
 
   if (s.documents && appState.documents.length > 0) {
+    const hasProposalForm = appState.documents.includes("PROPOSAL FORM");
     let docBlock = "We kindly request you to share the following documents to proceed further with your request:\n";
     for (const d of appState.documents) docBlock += "\n• " + d;
     parts.push(docBlock);
+
+    if (hasProposalForm) {
+      parts.push("We request you to kindly fill and share the attached Proposal Form to proceed further with your request.");
+    }
   }
 
   if (s.updateDate) {
@@ -626,7 +657,7 @@ function buildRF() {
   }
 
   if (s.originalCopy && !appState.workingMode) {
-    parts.push("We wish to inform you that you need to keep your original soft copy along with the Endorsed copy for future.");
+    parts.push("We request you to kindly keep the Endorsed copy along with your original policy copy for future reference.");
   }
 
   return parts.join("\n\n");
@@ -657,7 +688,7 @@ function buildInsuredPersonChange() {
     "",
     "We would like to update you that there may be charges and inspection applicable, which shall be communicated to you in future communication.",
     "",
-    "We wish to inform you that you need to keep your original soft copy along with the Endorsed copy for future."
+    "We request you to kindly keep the Endorsed copy along with your original policy copy for future reference."
   );
 
   return parts.join("\n");
