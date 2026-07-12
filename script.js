@@ -71,8 +71,8 @@ function escapeRegExp(str) {
    ========================================================= */
 function cleanAmount(raw) {
   if (raw === null || raw === undefined) return "";
-  // Remove Rs, ?, /-, commas, spaces
-  let s = String(raw).replace(/[?]/g, "").replace(/rs\.?/ig, "").replace(/\/-/g, "").replace(/,/g, "").trim();
+  // Remove Rs, /-, commas, spaces
+  let s = String(raw).replace(/rs\.?/ig, "").replace(/\/-/g, "").replace(/,/g, "").trim();
   // Extract first number-like sequence (allow decimal)
   const m = s.match(/[\d]+(?:\.\d+)?/);
   return m ? m[0] : "";
@@ -172,7 +172,7 @@ const mailTemplates = [
     keywords: ["sf mail", "sf link", "shortfall", "short fall", "premium shortfall", "payment shortfall", "sf"],
     type: "dynamic",
     fields: [
-      { key: "amount", label: "Shortfall Amount", placeholder: "e.g. 5000 or ?5000 or Rs. 5000/-", type: "text" },
+      { key: "amount", label: "Shortfall Amount", placeholder: "e.g. 5000 or Rs. 5000/-", type: "text" },
       { key: "link", label: "Payment Link", placeholder: "Paste payment link", type: "text" }
     ]
   },
@@ -210,14 +210,14 @@ const mailTemplates = [
       "",
       "Mobile phone criteria:",
       "",
-      "� Android based smart phone with Android version 5.0 or above OR iOS based device.",
-      "� Mobile camera should be 4 Mega pixels or above.",
-      "� Mobile Data or Wi-Fi connection should be turned ON on your smart phone.",
+      "\u2022 Android based smart phone with Android version 5.0 or above OR iOS based device.",
+      "\u2022 Mobile camera should be 4 Mega pixels or above.",
+      "\u2022 Mobile Data or Wi-Fi connection should be turned ON on your smart phone.",
       "",
       "Inspection Guidelines:",
       "",
-      "� The video has to be captured during day light.",
-      "� Videos captured in basements or shades (e.g. tree shades) will not be valid.",
+      "\u2022 The video has to be captured during day light.",
+      "\u2022 Videos captured in basements or shades (e.g. tree shades) will not be valid.",
       "",
       "Video capture process:",
       "",
@@ -261,17 +261,17 @@ const mailTemplates = [
       "",
       "Mobile Phone Requirements:",
       "",
-      "� Android smartphone with Android version 5.0 or above OR an iOS device.",
-      "� Mobile camera should be 4 MP or above.",
-      "� Mobile data or Wi-Fi connection must be enabled.",
+      "\u2022 Android smartphone with Android version 5.0 or above OR an iOS device.",
+      "\u2022 Mobile camera should be 4 MP or above.",
+      "\u2022 Mobile data or Wi-Fi connection must be enabled.",
       "",
       "Things to Remember:",
       "",
-      "� Capture the video in daylight, preferably before 6:00 PM on a clear day.",
-      "� Avoid recording in basements, under shades, under trees, parking areas, or beneath electricity wires.",
-      "� Ensure the vehicle is in a clean condition.",
-      "� In case of dents or scratches, capture the affected area clearly by moving the mobile closer.",
-      "� Ensure that the vehicle remains in focus throughout the video recording.",
+      "\u2022 Capture the video in daylight, preferably before 6:00 PM on a clear day.",
+      "\u2022 Avoid recording in basements, under shades, under trees, parking areas, or beneath electricity wires.",
+      "\u2022 Ensure the vehicle is in a clean condition.",
+      "\u2022 In case of dents or scratches, capture the affected area clearly by moving the mobile closer.",
+      "\u2022 Ensure that the vehicle remains in focus throughout the video recording.",
       "",
       "Please read the instructions carefully before starting the video capture process:",
       "",
@@ -285,7 +285,7 @@ const mailTemplates = [
       "8. Start the engine and record the Odometer reading. A reading captured in trip mode will not be valid.",
       "9. Capture the external view of the vehicle.",
       "10. Record the Engine Number and Chassis Number, which may be located under the front bonnet or below/beside the driver/front passenger seat.",
-      "11. Close the bonnet and record a complete 360-degree view of the vehicle as guided on the screen. Maintain an approximate distance of 2�3 feet from the vehicle.",
+      "11. Close the bonnet and record a complete 360-degree view of the vehicle as guided on the screen. Maintain an approximate distance of 2-3 feet from the vehicle.",
       "12. After completing the recording, click the Upload button and ensure that you exit the screen only after the upload is completed successfully.",
       "",
       "Once you successfully upload the video, kindly let us know so that we can proceed further with your request.",
@@ -854,8 +854,8 @@ function buildRenewal() {
       "",
       "TWO-WHEELER RENEWAL:",
       "",
-      "� 1800 208 8787 - IVR Toll-Free Number",
-      "� 0124 6138301 - Direct connection with the Two-Wheeler Renewal Team"
+      "\u2022 1800 208 8787 - IVR Toll-Free Number",
+      "\u2022 0124 6138301 - Direct connection with the Two-Wheeler Renewal Team"
     );
   }
   if (appState.sectionSelections.fourW) {
@@ -863,7 +863,7 @@ function buildRenewal() {
       "",
       "FOUR-WHEELER RENEWAL:",
       "",
-      "� 1800 419 7716 - Four-Wheeler Renewal Assistance"
+      "\u2022 1800 419 7716 - Four-Wheeler Renewal Assistance"
     );
   }
   parts.push("", "We request you to kindly contact the relevant renewal team for further assistance.");
@@ -1195,7 +1195,7 @@ function renderSFControls(host) {
   const amtInput = document.createElement("input");
   amtInput.type = "text";
   amtInput.className = "text-input";
-  amtInput.placeholder = "e.g. 5000 or ?5000 or Rs. 5000/-";
+  amtInput.placeholder = "e.g. 5000 or Rs. 5000/-";
   amtInput.value = appState.fieldValues.amount || "";
   amtInput.addEventListener("input", () => {
     appState.fieldValues.amount = amtInput.value;
@@ -1629,7 +1629,7 @@ async function copyMail() {
   const btn = document.getElementById("copyBtn");
   if (success) {
     btn.classList.add("copied");
-    btn.textContent = "Copied ?";
+    btn.textContent = "Copied";
     showToast("Mail copied to clipboard", "success");
     setTimeout(() => {
       btn.classList.remove("copied");
