@@ -1,5 +1,5 @@
 /* =========================================================
-   PB MAIL HELPER PRO — script.js
+   PB MAIL HELPER PRO � script.js
    Vanilla JS. No frameworks.
    ========================================================= */
 
@@ -30,7 +30,7 @@ const appState = {
    ========================================================= */
 const DOC_MAP = [
   { keys: ["rc", "registration certificate"], out: "RC (REGISTRATION CERTIFICATE)" },
-  { keys: ["aadhar", "aadhaar", "adhar", "aadhar card", "aadhaar card"], out: "AADHAAR CARD" },
+  { keys: ["aadhar", "aadhaar", "adhar", "aadhr", "adhaar", "aadhar card", "aadhaar card"], out: "AADHAAR CARD" },
   { keys: ["pan", "pan card"], out: "PAN CARD" },
   { keys: ["dl", "driving license", "driving licence"], out: "DRIVING LICENSE" },
   { keys: ["pyp", "previous year policy"], out: "PREVIOUS YEAR POLICY (PYP)" },
@@ -43,21 +43,36 @@ const DOC_MAP = [
 
 function normalizeDocument(raw) {
   if (!raw) return "";
-  const key = raw.trim().toLowerCase().replace(/\s+/g, " ");
+  const original = raw.trim();
+  const key = original.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+
   for (const item of DOC_MAP) {
     if (item.keys.includes(key)) return item.out;
   }
+
+  for (const item of DOC_MAP) {
+    for (const docKey of item.keys) {
+      const normalizedDocKey = docKey.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+      if (!normalizedDocKey) continue;
+      const pattern = new RegExp(`(^|\\s)${escapeRegExp(normalizedDocKey)}(\\s|$)`);
+      if (pattern.test(key)) return key.replace(pattern, `$1${item.out}$2`).replace(/\\s+/g, " ").trim().toUpperCase();
+    }
+  }
+
   // Unknown -> uppercase
-  return raw.trim().toUpperCase();
+  return original.toUpperCase();
 }
 
+function escapeRegExp(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 /* =========================================================
    INDIAN NUMBER FORMATTING
    ========================================================= */
 function cleanAmount(raw) {
   if (raw === null || raw === undefined) return "";
-  // Remove Rs, ₹, /-, commas, spaces
-  let s = String(raw).replace(/[₹]/g, "").replace(/rs\.?/ig, "").replace(/\/-/g, "").replace(/,/g, "").trim();
+  // Remove Rs, ?, /-, commas, spaces
+  let s = String(raw).replace(/[?]/g, "").replace(/rs\.?/ig, "").replace(/\/-/g, "").replace(/,/g, "").trim();
   // Extract first number-like sequence (allow decimal)
   const m = s.match(/[\d]+(?:\.\d+)?/);
   return m ? m[0] : "";
@@ -157,7 +172,7 @@ const mailTemplates = [
     keywords: ["sf mail", "sf link", "shortfall", "short fall", "premium shortfall", "payment shortfall", "sf"],
     type: "dynamic",
     fields: [
-      { key: "amount", label: "Shortfall Amount", placeholder: "e.g. 5000 or ₹5000 or Rs. 5000/-", type: "text" },
+      { key: "amount", label: "Shortfall Amount", placeholder: "e.g. 5000 or ?5000 or Rs. 5000/-", type: "text" },
       { key: "link", label: "Payment Link", placeholder: "Paste payment link", type: "text" }
     ]
   },
@@ -195,14 +210,14 @@ const mailTemplates = [
       "",
       "Mobile phone criteria:",
       "",
-      "• Android based smart phone with Android version 5.0 or above OR iOS based device.",
-      "• Mobile camera should be 4 Mega pixels or above.",
-      "• Mobile Data or Wi-Fi connection should be turned ON on your smart phone.",
+      "� Android based smart phone with Android version 5.0 or above OR iOS based device.",
+      "� Mobile camera should be 4 Mega pixels or above.",
+      "� Mobile Data or Wi-Fi connection should be turned ON on your smart phone.",
       "",
       "Inspection Guidelines:",
       "",
-      "• The video has to be captured during day light.",
-      "• Videos captured in basements or shades (e.g. tree shades) will not be valid.",
+      "� The video has to be captured during day light.",
+      "� Videos captured in basements or shades (e.g. tree shades) will not be valid.",
       "",
       "Video capture process:",
       "",
@@ -246,17 +261,17 @@ const mailTemplates = [
       "",
       "Mobile Phone Requirements:",
       "",
-      "• Android smartphone with Android version 5.0 or above OR an iOS device.",
-      "• Mobile camera should be 4 MP or above.",
-      "• Mobile data or Wi-Fi connection must be enabled.",
+      "� Android smartphone with Android version 5.0 or above OR an iOS device.",
+      "� Mobile camera should be 4 MP or above.",
+      "� Mobile data or Wi-Fi connection must be enabled.",
       "",
       "Things to Remember:",
       "",
-      "• Capture the video in daylight, preferably before 6:00 PM on a clear day.",
-      "• Avoid recording in basements, under shades, under trees, parking areas, or beneath electricity wires.",
-      "• Ensure the vehicle is in a clean condition.",
-      "• In case of dents or scratches, capture the affected area clearly by moving the mobile closer.",
-      "• Ensure that the vehicle remains in focus throughout the video recording.",
+      "� Capture the video in daylight, preferably before 6:00 PM on a clear day.",
+      "� Avoid recording in basements, under shades, under trees, parking areas, or beneath electricity wires.",
+      "� Ensure the vehicle is in a clean condition.",
+      "� In case of dents or scratches, capture the affected area clearly by moving the mobile closer.",
+      "� Ensure that the vehicle remains in focus throughout the video recording.",
       "",
       "Please read the instructions carefully before starting the video capture process:",
       "",
@@ -270,7 +285,7 @@ const mailTemplates = [
       "8. Start the engine and record the Odometer reading. A reading captured in trip mode will not be valid.",
       "9. Capture the external view of the vehicle.",
       "10. Record the Engine Number and Chassis Number, which may be located under the front bonnet or below/beside the driver/front passenger seat.",
-      "11. Close the bonnet and record a complete 360-degree view of the vehicle as guided on the screen. Maintain an approximate distance of 2–3 feet from the vehicle.",
+      "11. Close the bonnet and record a complete 360-degree view of the vehicle as guided on the screen. Maintain an approximate distance of 2�3 feet from the vehicle.",
       "12. After completing the recording, click the Upload button and ensure that you exit the screen only after the upload is completed successfully.",
       "",
       "Once you successfully upload the video, kindly let us know so that we can proceed further with your request.",
@@ -461,6 +476,25 @@ const mailTemplates = [
   },
 
   /* ---------- 13. RENEWAL CONTACT ---------- */
+  /* ---------- NOMINEE NOT REQUIRED ---------- */
+  {
+    id: "nominee_not_required",
+    header: "NOMINEE NOT REQUIRED",
+    description: "Nominee details not required when no Stand-Alone PA policy is applicable",
+    keywords: ["nominee not required", "pa not required", "no pa", "pa nominee not required", "standalone pa not available", "stand alone pa not available", "pa not applicable", "nominee details not required", "nominee not applicable"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your request.",
+      "",
+      "We would like to inform you that there is no Stand-Alone Personal Accident (PA) policy applicable with your vehicle insurance policy.",
+      "",
+      "Therefore, nominee details are not required and do not impact the vehicle insurance policy.",
+      "",
+      "We appreciate your understanding in this regard."
+    ].join("\n")
+  },
   {
     id: "renewal_contact",
     header: "RENEWAL CONTACT",
@@ -488,7 +522,38 @@ const mailTemplates = [
     ].join("\n")
   },
 
-  /* ---------- 15. REQUEST CLOSURE ---------- */
+  /* ---------- 15. 24HR TAT MAIL ---------- */
+  {
+    id: "tat_24hr",
+    header: "24HR TAT MAIL",
+    description: "Apology and status update TAT mail with 24 hours / working days options",
+    keywords: ["24hr", "24 hr", "24 hours", "tat mail", "delay", "apology", "apologize", "status update", "working days", "2wd", "5wd", "2 working days", "5 working days"],
+    type: "dynamic"
+  },
+
+  /* ---------- 16. ADDRESS CHANGE ---------- */
+  {
+    id: "address_change",
+    header: "ADDRESS CHANGE",
+    description: "Request valid address proof for address update",
+    keywords: ["address change", "address proof", "new address", "address update", "address correction", "address endorsement", "address modification"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your request for an address change in your insurance policy.",
+      "",
+      "To process the requested modification, we kindly request you to share a valid address proof reflecting the exact same address that needs to be updated in the policy.",
+      "",
+      "Once we receive the correct document matching the requested new address, we will proceed further with your update request.",
+      "",
+      "We would like to apprise you that the turnaround time for getting the changes made in your policy copy can take up to 10 days.",
+      "",
+      "We request you to kindly keep the Endorsed copy along with your original policy copy for future reference."
+    ].join("\n")
+  },
+
+  /* ---------- 17. REQUEST CLOSURE ---------- */
   {
     id: "request_closure",
     header: "REQUEST CLOSURE",
@@ -608,6 +673,7 @@ function buildPreview() {
     case "insured_person_change": return buildInsuredPersonChange();
     case "vahan_updated":   return buildVahanUpdated();
     case "renewal_contact": return buildRenewal();
+    case "tat_24hr":        return buildTat24Hr();
     case "request_closure": return buildClosure();
     default: return tpl.body || "";
   }
@@ -629,7 +695,7 @@ function buildRF() {
   if (s.documents && appState.documents.length > 0) {
     const hasProposalForm = appState.documents.includes("PROPOSAL FORM");
     let docBlock = "We kindly request you to share the following documents to proceed further with your request:\n";
-    for (const d of appState.documents) docBlock += "\n• " + d;
+    for (const d of appState.documents) docBlock += "\n\u2022 " + d;
     parts.push(docBlock);
 
     if (hasProposalForm) {
@@ -788,8 +854,8 @@ function buildRenewal() {
       "",
       "TWO-WHEELER RENEWAL:",
       "",
-      "• 1800 208 8787 - IVR Toll-Free Number",
-      "• 0124 6138301 - Direct connection with the Two-Wheeler Renewal Team"
+      "� 1800 208 8787 - IVR Toll-Free Number",
+      "� 0124 6138301 - Direct connection with the Two-Wheeler Renewal Team"
     );
   }
   if (appState.sectionSelections.fourW) {
@@ -797,11 +863,39 @@ function buildRenewal() {
       "",
       "FOUR-WHEELER RENEWAL:",
       "",
-      "• 1800 419 7716 - Four-Wheeler Renewal Assistance"
+      "� 1800 419 7716 - Four-Wheeler Renewal Assistance"
     );
   }
   parts.push("", "We request you to kindly contact the relevant renewal team for further assistance.");
   return parts.join("\n");
+}
+
+/* ---------- 24HR TAT MAIL ---------- */
+function buildTat24Hr() {
+  const mode = appState.fieldValues.tatMode || "24hr";
+  const customDays = parseInt(appState.fieldValues.tatCustomDays, 10);
+  let tatText = "24 hours";
+
+  if (mode === "2wd") tatText = "2 working days";
+  if (mode === "5wd") tatText = "5 working days";
+  if (mode === "custom") {
+    const days = Number.isFinite(customDays) && customDays > 0 ? customDays : 1;
+    tatText = `${days} ${days === 1 ? "working day" : "working days"}`;
+  }
+
+  return [
+    "Greetings from PolicyBazaar.com!",
+    "",
+    "This is with reference to your request.",
+    "",
+    "We apologize for the delay in the update.",
+    "",
+    "We would like to inform you that we are checking the details with the concerned team/insurance company.",
+    "",
+    `Request you to kindly allow us ${tatText} to share the status update.`,
+    "",
+    "We appreciate your patience and understanding."
+  ].join("\n");
 }
 
 /* ---------- REQUEST CLOSURE ---------- */
@@ -811,7 +905,7 @@ function buildClosure() {
     "",
     "This is with reference to your request.",
     "",
-    "We would like to inform you that, as per our telephonic conversation, we are proceeding with the closure of this request."
+    "We would like to inform you that, as per our telephonic conversation, we are proceeding with the closure of this request as your query has been addressed."
   ];
   const manual = (appState.manualText || "").trim();
   if (manual) {
@@ -821,7 +915,7 @@ function buildClosure() {
 }
 
 /* =========================================================
-   RENDER — LEFT CONTROLS PANE
+   RENDER � LEFT CONTROLS PANE
    ========================================================= */
 function renderControls() {
   const empty = document.getElementById("controlsEmpty");
@@ -858,6 +952,7 @@ function renderControls() {
     case "insured_person_change": renderInsuredPersonChangeControls(host); break;
     case "vahan_updated":   renderVahanUpdatedControls(host); break;
     case "renewal_contact": renderRenewalControls(host); break;
+    case "tat_24hr":        renderTat24HrControls(host); break;
     case "request_closure": renderClosureControls(host); break;
   }
 }
@@ -930,7 +1025,7 @@ function renderRFControls(host) {
     const workBtn = document.createElement("button");
     workBtn.type = "button";
     workBtn.className = "working-btn" + (appState.workingMode ? " active" : "");
-    workBtn.textContent = appState.workingMode ? "✓ Working mode" : "Working";
+    workBtn.textContent = appState.workingMode ? "Working mode" : "Working";
     workBtn.addEventListener("click", () => {
       appState.workingMode = !appState.workingMode;
       if (appState.workingMode) {
@@ -1078,7 +1173,7 @@ function renderDocChips(host) {
     const rm = document.createElement("button");
     rm.type = "button";
     rm.setAttribute("aria-label", "Remove " + d);
-    rm.textContent = "×";
+    rm.textContent = "x";
     rm.addEventListener("click", () => {
       appState.documents.splice(idx, 1);
       renderDocChips(host);
@@ -1100,7 +1195,7 @@ function renderSFControls(host) {
   const amtInput = document.createElement("input");
   amtInput.type = "text";
   amtInput.className = "text-input";
-  amtInput.placeholder = "e.g. 5000 or ₹5000 or Rs. 5000/-";
+  amtInput.placeholder = "e.g. 5000 or ?5000 or Rs. 5000/-";
   amtInput.value = appState.fieldValues.amount || "";
   amtInput.addEventListener("input", () => {
     appState.fieldValues.amount = amtInput.value;
@@ -1230,6 +1325,58 @@ function renderRenewalControls(host) {
   host.appendChild(grp);
 }
 
+/* ---------- 24HR TAT Controls ---------- */
+function renderTat24HrControls(host) {
+  const grp = createGroup("TAT Options");
+  const mode = appState.fieldValues.tatMode || "24hr";
+  const chipSel = document.createElement("div");
+  chipSel.className = "chip-select";
+
+  [
+    { value: "24hr", label: "24 hours" },
+    { value: "2wd", label: "2 WD" },
+    { value: "5wd", label: "5 WD" },
+    { value: "custom", label: "Custom WD" }
+  ].forEach(opt => {
+    const c = document.createElement("button");
+    c.type = "button";
+    c.className = "chip-opt" + (mode === opt.value ? " active" : "");
+    c.textContent = opt.label;
+    c.addEventListener("click", () => {
+      appState.fieldValues.tatMode = opt.value;
+      if (opt.value === "custom" && !appState.fieldValues.tatCustomDays) {
+        appState.fieldValues.tatCustomDays = "3";
+      }
+      renderControls();
+      updatePreview();
+    });
+    chipSel.appendChild(c);
+  });
+  grp.appendChild(chipSel);
+
+  if (mode === "custom") {
+    const dayLbl = document.createElement("label");
+    dayLbl.className = "ctrl-label";
+    dayLbl.style.marginTop = "10px";
+    dayLbl.textContent = "Custom Working Days";
+    const dayInput = document.createElement("input");
+    dayInput.type = "number";
+    dayInput.min = "1";
+    dayInput.max = "30";
+    dayInput.className = "text-input";
+    dayInput.placeholder = "e.g. 3";
+    dayInput.value = appState.fieldValues.tatCustomDays || "3";
+    dayInput.addEventListener("input", () => {
+      appState.fieldValues.tatCustomDays = dayInput.value;
+      updatePreview();
+    });
+    grp.appendChild(dayLbl);
+    grp.appendChild(dayInput);
+  }
+
+  host.appendChild(grp);
+}
+
 /* ---------- CLOSURE Controls ---------- */
 function renderClosureControls(host) {
   const grp = createGroup("Manual Note");
@@ -1318,14 +1465,49 @@ function createToggleRow(label, desc, checked, onChange) {
 }
 
 /* =========================================================
-   PREVIEW RENDERING (safe textContent)
+   PREVIEW RENDERING (safe HTML; visual badges are not copied)
    ========================================================= */
+function escapeHTML(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function getPreviewBadges(line) {
+  const lower = String(line || "").toLowerCase();
+  if (lower.includes("charges and inspection applicable")) {
+    return [
+      { icon: "V", label: "Inspection" },
+      { icon: "Rs", label: "Charges" }
+    ];
+  }
+  return [];
+}
+
+function renderPreviewHTML(text) {
+  return String(text || "").split("\n").map(line => {
+    const badges = getPreviewBadges(line);
+    const badgeHTML = badges.map(b => (
+      `<span class="preview-badge" title="${escapeHTML(b.label)}" aria-hidden="true">${escapeHTML(b.icon)}</span>`
+    )).join("");
+    const badgeWrap = badgeHTML ? `<span class="preview-badge-wrap">${badgeHTML}</span>` : "";
+    const docLine = String(line || "").match(/^\u2022\s+(.+)$/);
+    if (docLine) {
+      return `<span class="preview-doc-bullet" aria-hidden="true">&bull;</span>${escapeHTML(docLine[1])}`;
+    }
+    return badgeWrap + escapeHTML(line);
+  }).join("\n");
+}
+
 function updatePreview() {
   // If user is currently editing preview, don't overwrite
   if (appState.previewEditing) return;
   const card = document.getElementById("previewCard");
   const text = buildPreview();
-  card.textContent = text;
+  card.innerHTML = renderPreviewHTML(text);
 
   const copyBtn = document.getElementById("copyBtn");
   copyBtn.disabled = !text.trim();
@@ -1425,8 +1607,10 @@ function showResults(query) {
    ========================================================= */
 async function copyMail() {
   const card = document.getElementById("previewCard");
-  // If user edited preview, use its textContent
-  let text = card.textContent || "";
+  // Normal previews may include visual-only badges, so copy from the raw builder.
+  let text = appState.previewEditing
+    ? (card.textContent || "")
+    : (appState.manualPreviewOverride !== null ? appState.manualPreviewOverride : buildPreview());
   text = text.replace(/\r\n/g, "\n").trim();
   if (!text) return;
 
@@ -1445,7 +1629,7 @@ async function copyMail() {
   const btn = document.getElementById("copyBtn");
   if (success) {
     btn.classList.add("copied");
-    btn.textContent = "Copied ✓";
+    btn.textContent = "Copied ?";
     showToast("Mail copied to clipboard", "success");
     setTimeout(() => {
       btn.classList.remove("copied");
@@ -1559,7 +1743,7 @@ async function togglePiP() {
   if (!("documentPictureInPicture" in window)) {
     // Fallback: floating mode
     toggleFloating();
-    showToast("PiP not supported — using floating fallback", "success");
+    showToast("PiP not supported � using floating fallback", "success");
     return;
   }
 
@@ -1578,7 +1762,7 @@ async function togglePiP() {
         style.textContent = [...sheet.cssRules].map(r => r.cssText).join("\n");
         pipWindow.document.head.appendChild(style);
       } catch (e) {
-        // Cross-origin sheets — link them
+        // Cross-origin sheets � link them
         if (sheet.href) {
           const link = document.createElement("link");
           link.rel = "stylesheet";
@@ -1600,7 +1784,7 @@ async function togglePiP() {
       appState.isPiPActive = false;
     });
   } catch (e) {
-    showToast("Could not open PiP — using floating mode", "error");
+    showToast("Could not open PiP � using floating mode", "error");
     toggleFloating();
   }
 }
@@ -1816,10 +2000,11 @@ function init() {
   const card = document.getElementById("previewCard");
   card.addEventListener("dblclick", () => {
     if (!appState.activeTemplateId) return;
+    card.textContent = buildPreview();
     card.setAttribute("contenteditable", "true");
     appState.previewEditing = true;
     card.focus();
-    showToast("Editing enabled — click outside to save", "success");
+    showToast("Editing enabled � click outside to save", "success");
   });
   card.addEventListener("blur", () => {
     if (appState.previewEditing) {
