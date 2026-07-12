@@ -558,6 +558,34 @@ button { font-family: inherit; }
   text-align: center;
   margin-top: 40px;
 }
+.preview-badge-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 8px;
+  vertical-align: 1px;
+}
+.preview-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 50%;
+  background: #e8f1fb;
+  border: 1px solid #b8d2ee;
+  font-size: 13px;
+  line-height: 1;
+}
+.preview-doc-bullet {
+  display: inline-block;
+  width: 12px;
+  margin-right: 2px;
+  font-size: 18px;
+  line-height: 0;
+  vertical-align: -1px;
+}
 
 /* ========== FOOTER ========== */
 .app-footer {
