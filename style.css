@@ -1,4 +1,4 @@
-/* ========== PB MAIL HELPER PRO — STYLES ========== */
+/* ========== PB MAIL HELPER PRO - STYLES ========== */
 
 * { box-sizing: border-box; }
 
@@ -749,7 +749,7 @@ button { font-family: inherit; }
   }
 }
 
-/* PiP body helper — used when app moves into PiP window */
+/* PiP body helper - used when app moves into PiP window */
 body.pip-mode { background: #fff; }
 body.pip-mode .app-shell {
   margin: 0;
