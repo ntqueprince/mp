@@ -41,7 +41,7 @@
     <div class="search-wrap">
       <svg class="search-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 5 1.49-1.49-5-5Zm-6 0A4.5 4.5 0 1 1 14 9.5 4.51 4.51 0 0 1 9.5 14Z"/></svg>
       <input type="text" id="searchInput" placeholder="Search mail... e.g. RF, refund, vahan, inspection" autocomplete="off" aria-label="Search mail templates" />
-      <button id="clearSearchBtn" class="clear-search" aria-label="Clear search" style="display:none;">×</button>
+      <button id="clearSearchBtn" class="clear-search" aria-label="Clear search" style="display:none;">X</button>
     </div>
     <div id="resultsDropdown" class="results-dropdown" role="listbox" aria-label="Search results"></div>
   </section>
@@ -52,7 +52,7 @@
     <!-- LEFT: Controls -->
     <aside class="controls-pane" id="controlsPane">
       <div id="controlsEmpty" class="empty-state">
-        <div class="empty-icon" aria-hidden="true">✉</div>
+        <div class="empty-icon" aria-hidden="true">Mail</div>
         <h3>Select a mail template</h3>
         <p>Search above or pick from recent below.</p>
         <div id="quickTemplates" class="quick-templates"></div>
@@ -61,7 +61,7 @@
         <div class="active-template-bar">
           <div>
             <div class="active-tpl-label">Active Template</div>
-            <div class="active-tpl-header" id="activeTplHeader">—</div>
+            <div class="active-tpl-header" id="activeTplHeader">-</div>
           </div>
           <button class="link-btn" id="changeTplBtn">Change</button>
         </div>
