@@ -300,9 +300,9 @@ const mailTemplates = [
     id: "cancellation",
     header: "CANCELLATION",
     description: "Post-issuance policy cancellation process",
-    keywords: ["cancellation", "cancel", "post issuance cancel", "post issuance cancellation", "post issunce cancel", "post issunce cancellation", "118", "alt policy", "alternate policy", "alternative policy", "alternative"],
+    keywords: ["cancellation", "cancel", "post issuance cancel", "post issuance cancellation", "post issunce cancel", "post issunce cancellation", "118", "alt policy", "alternate policy", "alternative policy", "alternative", "neft", "refund details", "bank details"],
     type: "selectable",
-    defaultSelections: { alternate: true }
+    defaultSelections: { alternate: true, neft: false }
   },
 
   /* ---------- 7. CHARGEBACK REVERSAL ---------- */
@@ -553,6 +553,14 @@ const mailTemplates = [
     ].join("\n")
   },
 
+  /* ---------- 17. OWNERSHIP TRANSFER ---------- */
+  {
+    id: "ownership_transfer",
+    header: "OWNERSHIP TRANSFER",
+    description: "Request documents and new owner details for ownership transfer",
+    keywords: ["ownership transfer", "owner transfer", "transfer ownership", "name transfer", "new owner", "ownership", "rc holder", "name correction", "pyp rc holder", "transfer request"],
+    type: "dynamic"
+  },
   /* ---------- 17. REQUEST CLOSURE ---------- */
   {
     id: "request_closure",
@@ -674,6 +682,7 @@ function buildPreview() {
     case "vahan_updated":   return buildVahanUpdated();
     case "renewal_contact": return buildRenewal();
     case "tat_24hr":        return buildTat24Hr();
+    case "ownership_transfer": return buildOwnershipTransfer();
     case "request_closure": return buildClosure();
     default: return tpl.body || "";
   }
@@ -800,6 +809,44 @@ function buildRefund() {
   ].join("\n");
 }
 
+/* ---------- OWNERSHIP TRANSFER ---------- */
+function buildOwnershipTransfer() {
+  const parts = [
+    "Greetings from PolicyBazaar.com!",
+    "",
+    "This is in reference to your request regarding your Car Insurance policy.",
+    "",
+    "We would like to inform you that we have forwarded your request to the insurance company."
+  ];
+
+  if (appState.documents.length > 0) {
+    let docBlock = "To proceed further, we kindly request you to share the following documents:\n";
+    for (const d of appState.documents) docBlock += "\n\u2022 " + d;
+    parts.push(docBlock);
+  }
+
+  parts.push(
+    "Please also share the following details of the new owner:\n\n" +
+    "\u2022 Insured Name\n" +
+    "\u2022 Address\n" +
+    "\u2022 Email ID\n" +
+    "\u2022 Mobile Number\n" +
+    "\u2022 Date of Birth\n" +
+    "\u2022 Marital Status\n" +
+    "\u2022 Nominee Name\n" +
+    "\u2022 Nominee Date of Birth\n" +
+    "\u2022 Nominee Relationship with the Insured",
+    "We would like to apprise you that the turnaround time for making the changes in your policy copy can take up to 10 days.",
+    "Please note that there may be charges and inspections applicable, which will be communicated to you in future correspondence.",
+    "We also request you to keep the endorsed copy along with your original policy copy for future reference."
+  );
+
+  if (appState.sectionSelections.clarification) {
+    parts.push("Additionally, please confirm whether this request is for an ownership transfer or a name correction, as the previous year's policy indicates an ownership transfer. If it is a name correction, please provide the previous year policy with the RC holder's name.");
+  }
+
+  return parts.join("\n\n");
+}
 /* ---------- CANCELLATION ---------- */
 function buildCancellation() {
   const parts = [
@@ -812,10 +859,12 @@ function buildCancellation() {
   if (appState.sectionSelections.alternate) {
     parts.push("", "We request you to kindly share an alternate policy along with the reason for cancellation for further processing.");
   }
-  parts.push("", "Further, we wish to inform you that there may be a pro-rata deduction along with Rs. 118/- administrative charges, if applicable, as confirmed by the insurer. We shall keep you informed through our future communication.");
+  if (appState.sectionSelections.neft) {
+    parts.push("", "We request you to kindly share the NEFT details of the insured person, as the bank account should be in the same name as mentioned in the policy, for refund processing.");
+  }
+  parts.push("", "Additionally, please note that there will be an INR 118 administrative fee, along with a deduction based on the policy usage, which will be determined by the insurer after the cancellation request is raised.");
   return parts.join("\n");
 }
-
 /* ---------- VAHAN UPDATED ---------- */
 function buildVahanUpdated() {
   const parts = [
@@ -953,6 +1002,7 @@ function renderControls() {
     case "vahan_updated":   renderVahanUpdatedControls(host); break;
     case "renewal_contact": renderRenewalControls(host); break;
     case "tat_24hr":        renderTat24HrControls(host); break;
+    case "ownership_transfer": renderOwnershipTransferControls(host); break;
     case "request_closure": renderClosureControls(host); break;
   }
 }
@@ -1292,9 +1342,14 @@ function renderCancellationControls(host) {
     appState.sectionSelections.alternate,
     val => { appState.sectionSelections.alternate = val; updatePreview(); }
   ));
+  grp.appendChild(createToggleRow(
+    "NEFT Details Line",
+    "Ask for insured person NEFT details for refund",
+    appState.sectionSelections.neft,
+    val => { appState.sectionSelections.neft = val; updatePreview(); }
+  ));
   host.appendChild(grp);
 }
-
 /* ---------- VAHAN UPDATED Controls ---------- */
 function renderVahanUpdatedControls(host) {
   const grp = createGroup("Options");
@@ -1377,6 +1432,59 @@ function renderTat24HrControls(host) {
   host.appendChild(grp);
 }
 
+/* ---------- OWNERSHIP TRANSFER Controls ---------- */
+function renderOwnershipTransferControls(host) {
+  const docGrp = createGroup("Documents");
+  const docWrap = document.createElement("div");
+  docWrap.innerHTML = `
+    <div class="doc-input-row">
+      <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. clear rc, new owner aadhar, pan"/>
+      <button type="button" class="doc-add-btn" id="docAddBtn">Add</button>
+    </div>
+    <div class="doc-chips" id="docChips"></div>
+  `;
+  docGrp.appendChild(docWrap);
+  host.appendChild(docGrp);
+
+  const input = document.getElementById("docInput");
+  const btn = document.getElementById("docAddBtn");
+  const chips = document.getElementById("docChips");
+  if (input && btn && chips) {
+    const doAdd = () => {
+      const val = input.value.trim();
+      if (!val) return;
+      const norm = normalizeDocument(val);
+      if (!appState.documents.includes(norm)) {
+        appState.documents.push(norm);
+      }
+      input.value = "";
+      renderDocChips(chips);
+      updatePreview();
+    };
+    btn.addEventListener("click", doAdd);
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") { e.preventDefault(); doAdd(); }
+    });
+    renderDocChips(chips);
+  }
+
+  const optGrp = createGroup("Options");
+  optGrp.appendChild(createToggleRow(
+    "Ownership / Name Correction Clarification",
+    "Ask customer to confirm ownership transfer or name correction",
+    appState.sectionSelections.clarification,
+    val => { appState.sectionSelections.clarification = val; updatePreview(); }
+  ));
+  host.appendChild(optGrp);
+
+  const infoGrp = createGroup("Included Details");
+  const info = document.createElement("div");
+  info.style.fontSize = "12.5px";
+  info.style.color = "var(--text-soft)";
+  info.textContent = "New owner details, 10-day TAT, charges/inspection note, and endorsed-copy note are included automatically.";
+  infoGrp.appendChild(info);
+  host.appendChild(infoGrp);
+}
 /* ---------- CLOSURE Controls ---------- */
 function renderClosureControls(host) {
   const grp = createGroup("Manual Note");
@@ -1540,6 +1648,9 @@ function selectTemplate(id) {
       documents: false, updateDate: true, tat: true,
       charges: true, originalCopy: true
     };
+  } else if (tpl.id === "ownership_transfer") {
+    appState.sectionSelections = { clarification: false };
+    appState.documents = [];
   } else if (tpl.defaultSelections) {
     appState.sectionSelections = { ...tpl.defaultSelections };
     if (tpl.id === "refund_done") {
