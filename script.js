@@ -531,6 +531,27 @@ const mailTemplates = [
     type: "dynamic"
   },
 
+  /* ---------- TAT ALREADY SHARED ---------- */
+  {
+    id: "tat_already_shared",
+    header: "TAT ALREADY SHARED",
+    description: "Ask customer to wait for the TAT shared in earlier communication",
+    keywords: ["tat already shared", "already shared", "earlier communication", "wait tat", "ongoing concern", "already raised", "request processing", "follow up", "followup", "tat wait"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your recent email regarding your ongoing concern.",
+      "",
+      "We would like to inform you that your request has already been raised and is currently being processed with the insurance company.",
+      "",
+      "As the required update and applicable timelines have already been shared with you in our earlier communication, we kindly request you to wait until the completion of the mentioned Turnaround Time (TAT).",
+      "",
+      "Please be assured that we are tracking your request closely to ensure a resolution at the earliest.",
+      "",
+      "We sincerely appreciate your patience and understanding."
+    ].join("\n")
+  },
   /* ---------- 16. ADDRESS CHANGE ---------- */
   {
     id: "address_change",
@@ -553,6 +574,15 @@ const mailTemplates = [
     ].join("\n")
   },
 
+  /* ---------- AS PER RC NO CORRECTION ---------- */
+  {
+    id: "as_per_rc_no_correction",
+    header: "AS PER RC NO CORRECTION",
+    description: "Details are already correct as per RC/details available",
+    keywords: ["as per rc", "no correction", "already correct", "name correction", "details correct", "updated rc", "supporting documents", "rc correct", "correction not required"],
+    type: "selectable",
+    defaultSelections: { updatedDocs: false }
+  },
   /* ---------- 17. OWNERSHIP TRANSFER ---------- */
   {
     id: "ownership_transfer",
@@ -683,6 +713,7 @@ function buildPreview() {
     case "renewal_contact": return buildRenewal();
     case "tat_24hr":        return buildTat24Hr();
     case "ownership_transfer": return buildOwnershipTransfer();
+    case "as_per_rc_no_correction": return buildAsPerRcNoCorrection();
     case "request_closure": return buildClosure();
     default: return tpl.body || "";
   }
@@ -809,6 +840,24 @@ function buildRefund() {
   ].join("\n");
 }
 
+/* ---------- AS PER RC NO CORRECTION ---------- */
+function buildAsPerRcNoCorrection() {
+  const parts = [
+    "Greetings from PolicyBazaar.com!",
+    "",
+    "This is with reference to your request.",
+    "",
+    "We would like to inform you that the details mentioned in your policy are already updated as per the RC/details available with us.",
+    "",
+    "Hence, no correction is required from our end."
+  ];
+
+  if (appState.sectionSelections.updatedDocs) {
+    parts.push("", "If you still wish to make any changes, we request you to kindly raise a fresh request along with the updated RC/supporting documents reflecting the required changes.");
+  }
+
+  return parts.join("\n");
+}
 /* ---------- OWNERSHIP TRANSFER ---------- */
 function buildOwnershipTransfer() {
   const parts = [
@@ -1003,6 +1052,7 @@ function renderControls() {
     case "renewal_contact": renderRenewalControls(host); break;
     case "tat_24hr":        renderTat24HrControls(host); break;
     case "ownership_transfer": renderOwnershipTransferControls(host); break;
+    case "as_per_rc_no_correction": renderAsPerRcNoCorrectionControls(host); break;
     case "request_closure": renderClosureControls(host); break;
   }
 }
@@ -1347,6 +1397,17 @@ function renderCancellationControls(host) {
     "Ask for insured person NEFT details for refund",
     appState.sectionSelections.neft,
     val => { appState.sectionSelections.neft = val; updatePreview(); }
+  ));
+  host.appendChild(grp);
+}
+/* ---------- AS PER RC NO CORRECTION Controls ---------- */
+function renderAsPerRcNoCorrectionControls(host) {
+  const grp = createGroup("Options");
+  grp.appendChild(createToggleRow(
+    "Updated RC / Supporting Documents Line",
+    "Ask customer to raise fresh request with updated RC/docs",
+    appState.sectionSelections.updatedDocs,
+    val => { appState.sectionSelections.updatedDocs = val; updatePreview(); }
   ));
   host.appendChild(grp);
 }
