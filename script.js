@@ -853,7 +853,7 @@ function buildAsPerRcNoCorrection() {
   ];
 
   if (appState.sectionSelections.updatedDocs) {
-    parts.push("", "If you still wish to make any changes, we request you to kindly raise a fresh request along with the updated RC/supporting documents reflecting the required changes.");
+    parts.push("", "If you still wish to make any changes, we request you to kindly reply to this email or connect with us along with the updated RC/supporting documents reflecting the required changes.");
   }
 
   return parts.join("\n");
@@ -1405,7 +1405,7 @@ function renderAsPerRcNoCorrectionControls(host) {
   const grp = createGroup("Options");
   grp.appendChild(createToggleRow(
     "Updated RC / Supporting Documents Line",
-    "Ask customer to raise fresh request with updated RC/docs",
+    "Ask customer to reply/connect with updated RC/docs",
     appState.sectionSelections.updatedDocs,
     val => { appState.sectionSelections.updatedDocs = val; updatePreview(); }
   ));
