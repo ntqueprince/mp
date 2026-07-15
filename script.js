@@ -208,46 +208,8 @@ const mailTemplates = [
     header: "2W VIDEO INSPECTION",
     description: "Two-wheeler self-video inspection instructions",
     keywords: ["2w inspection", "2w video", "bike video", "bike inspection", "two wheeler video", "two wheeler inspection", "2 wheeler inspection", "2 wheeler video", "scooter inspection", "self video inspection", "pb inspect"],
-    type: "fixed",
-    body: [
-      "Greetings from PolicyBazaar.com!",
-      "",
-      "Request you to follow the below guidelines to do a self video inspection of your vehicle.",
-      "",
-      "For Android:",
-      "https://play.google.com/store/apps/details?id=com.policybazaar&hl=en-GB&pli=1&pid=mobile_hamburger&c=mobile_hamburger_dropdown",
-      "",
-      "For iOS Devices:",
-      "https://apps.apple.com/in/app/id956740142?mt=8",
-      "",
-      "Mobile phone criteria:",
-      "",
-      "\u2022 Android based smart phone with Android version 5.0 or above OR iOS based device.",
-      "\u2022 Mobile camera should be 4 Mega pixels or above.",
-      "\u2022 Mobile Data or Wi-Fi connection should be turned ON on your smart phone.",
-      "",
-      "Inspection Guidelines:",
-      "",
-      "\u2022 The video has to be captured during day light.",
-      "\u2022 Videos captured in basements or shades (e.g. tree shades) will not be valid.",
-      "",
-      "Video capture process:",
-      "",
-      "1. Install PB-inspect App on Google Playstore:",
-      "https://play.google.com/store/apps/details?id=com.pb.inspection",
-      "2. You can view the Demo video to understand the process further.",
-      "3. Click on \"Start Inspection\", enter your Mobile number and Vehicle number to start the inspection.",
-      "4. Start from front side of the vehicle with clear visibility of Registration number.",
-      "5. Move towards left and start to capture the entire vehicle by moving 360 degrees around the vehicle.",
-      "6. When you are on the back side of the vehicle, ensure clear visibility of Registration number.",
-      "7. Ensure you capture Chassis number as part of the video.",
-      "8. Also, ensure that you capture the odometer reading.",
-      "9. In case of any dent or scratches, please take the mobile closer to the place where the dent or scratch is visible and capture a picture as well using the \"Capture\" option available on right hand side bottom corner of the screen while the video capture process is ON.",
-      "10. You need not exit the App for this picture capture process. The same will happen while the video capturing is ON.",
-      "11. 360 Degree view of the vehicle has to be captured in a single video and the vehicle cannot go out of focus at any time of the video capturing.",
-      "12. The RC copy and Previous year policy copy (if applicable) should be captured in the video either at the start or end.",
-      "13. Once you are done with capturing the video, please click the Upload button and ensure you do not exit the screen while the upload is in process."
-    ].join("\n")
+    type: "selectable",
+    defaultSelections: { reinspection: false }
   },
   /* ---------- 5. 4W VIDEO INSPECTION ---------- */
   {
@@ -255,56 +217,8 @@ const mailTemplates = [
     header: "4W VIDEO INSPECTION",
     description: "Four-wheeler self-video inspection instructions",
     keywords: ["video", "inspection", "4w video", "video inspection", "inspection video", "4w inspection", "car inspection", "self video", "vehicle video"],
-    type: "fixed",
-    body: [
-      "Greetings from PolicyBazaar.com!",
-      "",
-      "This is with reference to your request.",
-      "",
-      "Inspection of your vehicle is mandatory for us to proceed with the requested changes in your policy.",
-      "",
-      "Please follow the below guidelines to upload a self-video inspection of your vehicle:",
-      "",
-      "For Android:",
-      "https://play.google.com/store/apps/details?id=com.policybazaar&hl=en-GB&pli=1&pid=mobile_hamburger&c=mobile_hamburger_dropdown",
-      "",
-      "For iOS:",
-      "https://apps.apple.com/in/app/id956740142?mt=8",
-      "",
-      "Mobile Phone Requirements:",
-      "",
-      "\u2022 Android smartphone with Android version 5.0 or above OR an iOS device.",
-      "\u2022 Mobile camera should be 4 MP or above.",
-      "\u2022 Mobile data or Wi-Fi connection must be enabled.",
-      "",
-      "Things to Remember:",
-      "",
-      "\u2022 Capture the video in daylight, preferably before 6:00 PM on a clear day.",
-      "\u2022 Avoid recording in basements, under shades, under trees, parking areas, or beneath electricity wires.",
-      "\u2022 Ensure the vehicle is in a clean condition.",
-      "\u2022 In case of dents or scratches, capture the affected area clearly by moving the mobile closer.",
-      "\u2022 Ensure that the vehicle remains in focus throughout the video recording.",
-      "",
-      "Please read the instructions carefully before starting the video capture process:",
-      "",
-      "1. Install the PolicyBazaar App.",
-      "2. View the Demo Video and follow the steps carefully.",
-      "3. Click on \"Start Inspection\".",
-      "4. Enter your Mobile Number and Vehicle Registration Number, including all digits and letters.",
-      "5. Keep the RC (Registration Certificate) and Previous Year Policy ready.",
-      "6. Open the bonnet and start making the video as guided in the application.",
-      "7. Record the RC and Previous Year Policy.",
-      "8. Start the engine and record the Odometer reading. A reading captured in trip mode will not be valid.",
-      "9. Capture the external view of the vehicle.",
-      "10. Record the Engine Number and Chassis Number, which may be located under the front bonnet or below/beside the driver/front passenger seat.",
-      "11. Close the bonnet and record a complete 360-degree view of the vehicle as guided on the screen. Maintain an approximate distance of 2-3 feet from the vehicle.",
-      "12. After completing the recording, click the Upload button and ensure that you exit the screen only after the upload is completed successfully.",
-      "",
-      "Once you successfully upload the video, kindly let us know so that we can proceed further with your request.",
-      "",
-      "Note:",
-      "Please ensure that the CNG cylinder is also clearly captured if the vehicle has an externally fitted CNG kit."
-    ].join("\n")
+    type: "selectable",
+    defaultSelections: { reinspection: false }
   },
 
   /* ---------- 6. CANCELLATION ---------- */
@@ -770,6 +684,8 @@ function buildPreview() {
     case "renewal_contact": return buildRenewal();
     case "tat_24hr":        return buildTat24Hr();
     case "ownership_transfer": return buildOwnershipTransfer();
+    case "video_inspection": return buildVideoInspection();
+    case "two_w_video_inspection": return buildTwoWVideoInspection();
     case "as_per_rc_no_correction": return buildAsPerRcNoCorrection();
     case "request_closure": return buildClosure();
     default: return tpl.body || "";
@@ -984,6 +900,86 @@ function buildOwnershipTransfer() {
 
   return parts.join("\n\n");
 }
+/* ---------- 2W VIDEO INSPECTION ---------- */
+function buildTwoWVideoInspection() {
+  const s = appState.sectionSelections;
+  const reason = appState.fieldValues.twoWReinspectionReason || "";
+
+  const parts = [
+    "Greetings from PolicyBazaar.com!",
+    "This is with reference to your request."
+  ];
+
+  if (s.reinspection && reason.trim()) {
+    parts.push(`Note: We request you to upload the video again because ${reason.trim()}.`);
+  }
+
+  parts.push(
+    "Request you to follow the below guidelines to do a self video inspection of your vehicle.",
+    "For Android:\nhttps://play.google.com/store/apps/details?id=com.policybazaar&hl=en-GB&pli=1&pid=mobile_hamburger&c=mobile_hamburger_dropdown",
+    "For iOS Devices:\nhttps://apps.apple.com/in/app/id956740142?mt=8",
+    "Mobile phone criteria:\n\n\u2022 Android based smart phone with Android version 5.0 or above OR iOS based device.\n\u2022 Mobile camera should be 4 Mega pixels or above.\n\u2022 Mobile Data or Wi-Fi connection should be turned ON on your smart phone.",
+    "Inspection Guidelines:\n\n\u2022 The video has to be captured during day light.\n\u2022 Videos captured in basements or shades (e.g. tree shades) will not be valid.",
+    "Video capture process:\n\n" +
+    "1. Install PB-inspect App on Google Playstore:\nhttps://play.google.com/store/apps/details?id=com.pb.inspection\n" +
+    "2. You can view the Demo video to understand the process further.\n" +
+    "3. Click on \"Start Inspection\", enter your Mobile number and Vehicle number to start the inspection.\n" +
+    "4. Start from front side of the vehicle with clear visibility of Registration number.\n" +
+    "5. Move towards left and start to capture the entire vehicle by moving 360 degrees around the vehicle.\n" +
+    "6. When you are on the back side of the vehicle, ensure clear visibility of Registration number.\n" +
+    "7. Ensure you capture Chassis number as part of the video.\n" +
+    "8. Also, ensure that you capture the odometer reading.\n" +
+    "9. In case of any dent or scratches, please take the mobile closer to the place where the dent or scratch is visible and capture a picture as well using the \"Capture\" option available on right hand side bottom corner of the screen while the video capture process is ON.\n" +
+    "10. You need not exit the App for this picture capture process. The same will happen while the video capturing is ON.\n" +
+    "11. 360 Degree view of the vehicle has to be captured in a single video and the vehicle cannot go out of focus at any time of the video capturing.\n" +
+    "12. The RC copy and Previous year policy copy (if applicable) should be captured in the video either at the start or end.\n" +
+    "13. Once you are done with capturing the video, please click the Upload button and ensure you do not exit the screen while the upload is in process."
+  );
+
+  return parts.join("\n\n");
+}
+
+/* ---------- 4W VIDEO INSPECTION ---------- */
+function buildVideoInspection() {
+  const s = appState.sectionSelections;
+  const reason = appState.fieldValues.reinspectionReason || "";
+
+  const parts = [
+    "Greetings from PolicyBazaar.com!",
+    "This is with reference to your request."
+  ];
+
+  if (s.reinspection && reason.trim()) {
+    parts.push(`Note: We request you to upload the video again because ${reason.trim()}.`);
+  }
+
+  parts.push(
+    "Inspection of your vehicle is mandatory for us to proceed with the requested changes in your policy.",
+    "Please follow the below guidelines to upload a self-video inspection of your vehicle:",
+    "For Android:\nhttps://play.google.com/store/apps/details?id=com.policybazaar&hl=en-GB&pli=1&pid=mobile_hamburger&c=mobile_hamburger_dropdown",
+    "For iOS:\nhttps://apps.apple.com/in/app/id956740142?mt=8",
+    "Mobile Phone Requirements:\n\n\u2022 Android smartphone with Android version 5.0 or above OR an iOS device.\n\u2022 Mobile camera should be 4 MP or above.\n\u2022 Mobile data or Wi-Fi connection must be enabled.",
+    "Things to Remember:\n\n\u2022 Capture the video in daylight, preferably before 6:00 PM on a clear day.\n\u2022 Avoid recording in basements, under shades, under trees, parking areas, or beneath electricity wires.\n\u2022 Ensure the vehicle is in a clean condition.\n\u2022 In case of dents or scratches, capture the affected area clearly by moving the mobile closer.\n\u2022 Ensure that the vehicle remains in focus throughout the video recording.",
+    "Please read the instructions carefully before starting the video capture process:\n\n" +
+    "1. Install the PolicyBazaar App.\n" +
+    "2. View the Demo Video and follow the steps carefully.\n" +
+    "3. Click on \"Start Inspection\".\n" +
+    "4. Enter your Mobile Number and Vehicle Registration Number, including all digits and letters.\n" +
+    "5. Keep the RC (Registration Certificate) and Previous Year Policy ready.\n" +
+    "6. Open the bonnet and start making the video as guided in the application.\n" +
+    "7. Record the RC and Previous Year Policy.\n" +
+    "8. Start the engine and record the Odometer reading. A reading captured in trip mode will not be valid.\n" +
+    "9. Capture the external view of the vehicle.\n" +
+    "10. Record the Engine Number and Chassis Number, which may be located under the front bonnet or below/beside the driver/front passenger seat.\n" +
+    "11. Close the bonnet and record a complete 360-degree view of the vehicle as guided on the screen. Maintain an approximate distance of 2-3 feet from the vehicle.\n" +
+    "12. After completing the recording, click the Upload button and ensure that you exit the screen only after the upload is completed successfully.",
+    "Once you successfully upload the video, kindly let us know so that we can proceed further with your request.",
+    "Note:\nPlease ensure that the CNG cylinder is also clearly captured if the vehicle has an externally fitted CNG kit."
+  );
+
+  return parts.join("\n\n");
+}
+
 /* ---------- CANCELLATION ---------- */
 function buildCancellation() {
   const parts = [
@@ -1159,6 +1155,8 @@ function renderControls() {
     case "renewal_contact": renderRenewalControls(host); break;
     case "tat_24hr":        renderTat24HrControls(host); break;
     case "ownership_transfer": renderOwnershipTransferControls(host); break;
+    case "video_inspection": renderVideoInspectionControls(host); break;
+    case "two_w_video_inspection": renderTwoWVideoInspectionControls(host); break;
     case "as_per_rc_no_correction": renderAsPerRcNoCorrectionControls(host); break;
     case "request_closure": renderClosureControls(host); break;
   }
@@ -1720,6 +1718,90 @@ function renderOwnershipTransferControls(host) {
   infoGrp.appendChild(info);
   host.appendChild(infoGrp);
 }
+/* ---------- 2W VIDEO INSPECTION Controls ---------- */
+function renderTwoWVideoInspectionControls(host) {
+  const s = appState.sectionSelections;
+  
+  const grp = createGroup("Options");
+  grp.appendChild(createToggleRow(
+    "Re-inspection Note",
+    "Add a note explaining why a new video is required",
+    !!s.reinspection,
+    val => {
+      s.reinspection = val;
+      renderControls();
+      updatePreview();
+    }
+  ));
+  host.appendChild(grp);
+
+  if (s.reinspection) {
+    const reasonGrp = createGroup("Re-inspection Details");
+    
+    const label = document.createElement("label");
+    label.className = "ctrl-label";
+    label.textContent = "Reason for asking again";
+    reasonGrp.appendChild(label);
+
+    const input = document.createElement("textarea");
+    input.className = "text-input";
+    input.style.width = "100%";
+    input.style.minHeight = "60px";
+    input.style.resize = "vertical";
+    input.placeholder = "e.g. the previous video was not clear / night time recording";
+    input.value = appState.fieldValues.twoWReinspectionReason || "";
+    input.addEventListener("input", () => {
+      appState.fieldValues.twoWReinspectionReason = input.value;
+      updatePreview();
+    });
+
+    reasonGrp.appendChild(input);
+    host.appendChild(reasonGrp);
+  }
+}
+
+/* ---------- 4W VIDEO INSPECTION Controls ---------- */
+function renderVideoInspectionControls(host) {
+  const s = appState.sectionSelections;
+  
+  const grp = createGroup("Options");
+  grp.appendChild(createToggleRow(
+    "Re-inspection Note",
+    "Add a note explaining why a new video is required",
+    !!s.reinspection,
+    val => {
+      s.reinspection = val;
+      renderControls();
+      updatePreview();
+    }
+  ));
+  host.appendChild(grp);
+
+  if (s.reinspection) {
+    const reasonGrp = createGroup("Re-inspection Details");
+    
+    const label = document.createElement("label");
+    label.className = "ctrl-label";
+    label.textContent = "Reason for asking again";
+    reasonGrp.appendChild(label);
+
+    const input = document.createElement("textarea");
+    input.className = "text-input";
+    input.style.width = "100%";
+    input.style.minHeight = "60px";
+    input.style.resize = "vertical";
+    input.placeholder = "e.g. the previous video was not clear / night time recording";
+    input.value = appState.fieldValues.reinspectionReason || "";
+    input.addEventListener("input", () => {
+      appState.fieldValues.reinspectionReason = input.value;
+      updatePreview();
+    });
+
+    reasonGrp.appendChild(input);
+    host.appendChild(reasonGrp);
+  }
+}
+
 /* ---------- CLOSURE Controls ---------- */
 function renderClosureControls(host) {
   const grp = createGroup("Manual Note");
@@ -1831,6 +1913,15 @@ function getPreviewBadges(line) {
 }
 
 function renderPreviewHTML(text) {
+  const allowDelete = [
+    "docs_required",
+    "rf",
+    "ownership_transfer",
+    "cancellation",
+    "insured_person_change",
+    "as_per_rc_no_correction"
+  ].includes(appState.activeTemplateId);
+
   return String(text || "").split("\n").map(line => {
     const badges = getPreviewBadges(line);
     const badgeHTML = badges.map(b => (
@@ -1839,15 +1930,22 @@ function renderPreviewHTML(text) {
     const badgeWrap = badgeHTML ? `<span class="preview-badge-wrap">${badgeHTML}</span>` : "";
     const docLine = String(line || "").match(/^\u2022\s+(.+)$/);
     if (docLine) {
-      return `<span class="preview-doc-bullet" aria-hidden="true">&bull;</span>${escapeHTML(docLine[1])}`;
+      if (allowDelete) {
+        return `<span class="preview-doc-bullet" aria-hidden="true">&bull;</span>${escapeHTML(docLine[1])} <span class="delete-line-btn" data-line="${escapeHTML(line)}" title="Delete this line">&times;</span>`;
+      } else {
+        return `<span class="preview-doc-bullet" aria-hidden="true">&bull;</span>${escapeHTML(docLine[1])}`;
+      }
     }
     return badgeWrap + escapeHTML(line);
   }).join("\n");
 }
 
-function updatePreview() {
+function updatePreview(isControlChange = true) {
   // If user is currently editing preview, don't overwrite
   if (appState.previewEditing) return;
+  if (isControlChange) {
+    appState.manualPreviewOverride = null;
+  }
   const card = document.getElementById("previewCard");
   const text = buildPreview();
   card.innerHTML = renderPreviewHTML(text);
@@ -2352,11 +2450,29 @@ function init() {
     card.focus();
     showToast("Editing enabled � click outside to save", "success");
   });
+
+  card.addEventListener("click", e => {
+    const btn = e.target.closest(".delete-line-btn");
+    if (btn) {
+      e.stopPropagation();
+      const lineToDelete = btn.getAttribute("data-line");
+      let currentText = appState.manualPreviewOverride !== null ? appState.manualPreviewOverride : buildPreview();
+      const lines = currentText.split("\n");
+      const index = lines.indexOf(lineToDelete);
+      if (index !== -1) {
+        lines.splice(index, 1);
+        appState.manualPreviewOverride = lines.join("\n");
+        updatePreview(false);
+        showToast("Line deleted from preview", "info");
+      }
+    }
+  });
   card.addEventListener("blur", () => {
     if (appState.previewEditing) {
       appState.previewEditing = false;
       card.setAttribute("contenteditable", "false");
       appState.manualPreviewOverride = card.textContent;
+      updatePreview(false);
     }
   });
 
