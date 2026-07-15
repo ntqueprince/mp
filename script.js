@@ -127,6 +127,18 @@ function addDays(base, days) {
    TEMPLATE DEFINITIONS
    ========================================================= */
 const mailTemplates = [
+  /* ---------- DOCS REQUIRED ---------- */
+  {
+    id: "docs_required",
+    header: "DOCS REQUIRED",
+    description: "Request specific documents from customer",
+    keywords: ["docs required", "document request", "documents required", "pending documents", "docs", "request documents"],
+    type: "hybrid",
+    defaultSelections: {
+      charges: true,
+      originalCopy: true
+    }
+  },
   /* ---------- 1. RF ---------- */
   {
     id: "rf",
@@ -300,9 +312,9 @@ const mailTemplates = [
     id: "cancellation",
     header: "CANCELLATION",
     description: "Post-issuance policy cancellation process",
-    keywords: ["cancellation", "cancel", "post issuance cancel", "post issuance cancellation", "post issunce cancel", "post issunce cancellation", "118", "alt policy", "alternate policy", "alternative policy", "alternative", "neft", "refund details", "bank details"],
+    keywords: ["cancellation", "cancel", "post issuance cancel", "post issuance cancellation", "post issunce cancel", "post issunce cancellation", "118", "alt policy", "alternate policy", "alternative policy", "alternative", "neft", "refund details", "bank details", "written consent", "cancelled cheque", "bank passbook", "package policy"],
     type: "selectable",
-    defaultSelections: { alternate: true, neft: false }
+    defaultSelections: { irdaiNote: false, consent: false, alternate: true, neft: false }
   },
 
   /* ---------- 7. CHARGEBACK REVERSAL ---------- */
@@ -522,6 +534,31 @@ const mailTemplates = [
     ].join("\n")
   },
 
+  /* ---------- UNNAMED PASSENGER COVER ---------- */
+  {
+    id: "unnamed_passenger_cover",
+    header: "UNNAMED PASSENGER COVER",
+    description: "Ask customer to confirm PA cover option for unnamed passengers",
+    keywords: ["unnamed passenger cover", "unnamed passenger", "pa unnamed", "pa cover unnamed", "passenger cover", "pa passenger", "sum insured passenger", "50", "100"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "We have received your request for making changes in your policy.",
+      "",
+      "We request you to kindly confirm the PA cover for unnamed passengers that you wish to opt for:",
+      "",
+      "1. PA cover for unnamed passengers of Rs. 50/- (excluding GST) for a sum insured value of Rs. 1,00,000/-",
+      "",
+      "2. PA cover for unnamed passengers of Rs. 100/- (excluding GST) for a sum insured value of Rs. 2,00,000/-",
+      "",
+      "We would like to apprise you that the turnaround time for getting the changes made in your policy copy can take up to 10 days.",
+      "",
+      "We would like to update you that there may be charges and inspection applicable, which shall be communicated to you in future communication.",
+      "",
+      "We request you to kindly keep the Endorsed copy along with your original policy copy for future reference."
+    ].join("\n")
+  },
   /* ---------- 15. 24HR TAT MAIL ---------- */
   {
     id: "tat_24hr",
@@ -550,6 +587,25 @@ const mailTemplates = [
       "Please be assured that we are tracking your request closely to ensure a resolution at the earliest.",
       "",
       "We sincerely appreciate your patience and understanding."
+    ].join("\n")
+  },
+  /* ---------- POI CHANGE NOT POSSIBLE ---------- */
+  {
+    id: "poi_change_not_possible",
+    header: "POI CHANGE NOT POSSIBLE",
+    description: "Insurance date change cannot be processed when previous policy is expired",
+    keywords: ["poi change", "period of insurance", "insurance date", "insurance dates", "date change", "policy date change", "pyp expired", "previous policy expired", "break in", "breakin", "policy break", "continuity break"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your request for a change in the insurance dates (Period of Insurance) in your policy.",
+      "",
+      "We would like to inform you that your previous policy had already expired before the current policy was renewed.",
+      "",
+      "As per the insurance company guidelines, the policy period cannot be changed in the current policy in such cases, as it is considered a break-in policy and was not renewed in continuity.",
+      "",
+      "Therefore, we will not be able to process the requested change in the insurance dates."
     ].join("\n")
   },
   /* ---------- 16. ADDRESS CHANGE ---------- */
@@ -704,6 +760,7 @@ function buildPreview() {
   if (tpl.type === "fixed") return tpl.body;
 
   switch (tpl.id) {
+    case "docs_required":   return buildDocsRequired();
     case "rf":              return buildRF();
     case "sf_payment":      return buildSF();
     case "refund_done":     return buildRefund();
@@ -721,6 +778,37 @@ function buildPreview() {
 
 function getActiveTemplate() {
   return mailTemplates.find(t => t.id === appState.activeTemplateId) || null;
+}
+
+/* ---------- DOCS REQUIRED ---------- */
+function buildDocsRequired() {
+  const s = appState.sectionSelections;
+  const parts = [
+    "Greetings from PolicyBazaar.com!",
+    "This is with reference to your request."
+  ];
+
+  if (appState.documents.length > 0) {
+    let docBlock = "We kindly request you to share the following document(s) to proceed further with your request:\n";
+    for (const d of appState.documents) docBlock += "\n\u2022 " + d;
+    parts.push(docBlock);
+  } else {
+    parts.push("We kindly request you to share the required documents to proceed further with your request.");
+  }
+
+  parts.push(
+    "We would like to apprise you that the turnaround time for getting the changes made in your policy copy can take up to 10 days."
+  );
+
+  if (s.charges) {
+    parts.push("We would like to update you that there may be charges and inspection applicable, which shall be communicated to you in future communication.");
+  }
+
+  if (s.originalCopy) {
+    parts.push("We request you to kindly keep the Endorsed copy along with your original policy copy for future reference.");
+  }
+
+  return parts.join("\n\n");
 }
 
 /* ---------- RF ---------- */
@@ -899,20 +987,38 @@ function buildOwnershipTransfer() {
 /* ---------- CANCELLATION ---------- */
 function buildCancellation() {
   const parts = [
-    "Greetings from PolicyBazaar.com!",
-    "",
-    "This is with reference to your request.",
-    "",
-    "We wish to inform you that the cancellation process usually takes 10 days after receiving all the required documents/details."
+    "Greetings from PolicyBazaar.com!"
   ];
+
+  parts.push(
+    "This is in reference to your cancellation request."
+  );
+
+  const requests = [];
+  if (appState.sectionSelections.consent) {
+    requests.push("1. Written consent for cancellation with the policy number (I want to cancel this policy no: ______________)");
+  }
   if (appState.sectionSelections.alternate) {
-    parts.push("", "We request you to kindly share an alternate policy along with the reason for cancellation for further processing.");
+    requests.push(`${requests.length + 1}. Alternate policy of the same vehicle`);
   }
   if (appState.sectionSelections.neft) {
-    parts.push("", "We request you to kindly share the NEFT details of the insured person, as the bank account should be in the same name as mentioned in the policy, for refund processing.");
+    requests.push(`${requests.length + 1}. A cancelled cheque or bank passbook of the insured person as per policy`);
   }
-  parts.push("", "Additionally, please note that there will be an INR 118 administrative fee, along with a deduction based on the policy usage, which will be determined by the insurer after the cancellation request is raised.");
-  return parts.join("\n");
+
+  if (requests.length > 0) {
+    parts.push("However, we kindly request you to provide the following:\n\n" + requests.join("\n"));
+  }
+
+  parts.push(
+    "The cancellation process typically takes 10 days.",
+    "Additionally, please note that there will be an INR 118 administrative fee, along with a deduction based on the policy usage, which will be determined by the insurer after the cancellation request is raised."
+  );
+
+  if (appState.sectionSelections.irdaiNote) {
+    parts.push("Note: As per insurer norms, cancellation of a third-party policy should be processed on the basis of a comprehensive/package policy for the same vehicle. If cancellation is requested on the basis of another third-party policy, only the policy with the later start date will be cancelled.");
+  }
+
+  return parts.join("\n\n");
 }
 /* ---------- VAHAN UPDATED ---------- */
 function buildVahanUpdated() {
@@ -1043,6 +1149,7 @@ function renderControls() {
   }
 
   switch (tpl.id) {
+    case "docs_required":   renderDocsRequiredControls(host); break;
     case "rf":              renderRFControls(host); break;
     case "sf_payment":      renderSFControls(host); break;
     case "refund_done":     renderRefundControls(host); break;
@@ -1068,6 +1175,61 @@ function renderQuickTemplates() {
     chip.addEventListener("click", () => selectTemplate(t.id));
     host.appendChild(chip);
   });
+}
+
+/* ---------- DOCS REQUIRED Controls ---------- */
+function renderDocsRequiredControls(host) {
+  const s = appState.sectionSelections;
+
+  const docGrp = createGroup("Documents");
+  const docWrap = document.createElement("div");
+  docWrap.style.marginTop = "8px";
+  docWrap.innerHTML = `
+    <div class="doc-input-row">
+      <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. rc, pyp, aadhar"/>
+      <button type="button" class="doc-add-btn" id="docAddBtn">Add</button>
+    </div>
+    <div class="doc-chips" id="docChips"></div>
+  `;
+  docGrp.appendChild(docWrap);
+  host.appendChild(docGrp);
+
+  const input = document.getElementById("docInput");
+  const btn = document.getElementById("docAddBtn");
+  const chips = document.getElementById("docChips");
+  if (input && btn && chips) {
+    const doAdd = () => {
+      const val = input.value.trim();
+      if (!val) return;
+      const norm = normalizeDocument(val);
+      if (!appState.documents.includes(norm)) {
+        appState.documents.push(norm);
+      }
+      input.value = "";
+      renderDocChips(chips);
+      updatePreview();
+    };
+    btn.addEventListener("click", doAdd);
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") { e.preventDefault(); doAdd(); }
+    });
+    renderDocChips(chips);
+  }
+
+  const optGrp = createGroup("Options");
+  optGrp.appendChild(createToggleRow(
+    "Charges & Inspection Line",
+    "Show charges applicable warning",
+    !!s.charges,
+    val => { s.charges = val; updatePreview(); }
+  ));
+  optGrp.appendChild(createToggleRow(
+    "Original Copy Warning Line",
+    "Show keep endorsed copy recommendation",
+    !!s.originalCopy,
+    val => { s.originalCopy = val; updatePreview(); }
+  ));
+  host.appendChild(optGrp);
 }
 
 /* ---------- RF Controls ---------- */
@@ -1387,14 +1549,26 @@ function renderInsuredPersonChangeControls(host) {
 function renderCancellationControls(host) {
   const grp = createGroup("Options");
   grp.appendChild(createToggleRow(
+    "Insurer Norms Note",
+    "Include TP/package policy cancellation note as per insurer norms",
+    appState.sectionSelections.irdaiNote,
+    val => { appState.sectionSelections.irdaiNote = val; updatePreview(); }
+  ));
+  grp.appendChild(createToggleRow(
+    "Written Consent Line",
+    "Ask for written consent with policy number",
+    appState.sectionSelections.consent,
+    val => { appState.sectionSelections.consent = val; updatePreview(); }
+  ));
+  grp.appendChild(createToggleRow(
     "Alternate Policy Line",
-    "Ask customer to share alternate policy & reason",
+    "Ask customer to share alternate policy",
     appState.sectionSelections.alternate,
     val => { appState.sectionSelections.alternate = val; updatePreview(); }
   ));
   grp.appendChild(createToggleRow(
-    "NEFT Details Line",
-    "Ask for insured person NEFT details for refund",
+    "Bank Proof Line",
+    "Ask for cancelled cheque/passbook of insured person",
     appState.sectionSelections.neft,
     val => { appState.sectionSelections.neft = val; updatePreview(); }
   ));
