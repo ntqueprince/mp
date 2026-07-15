@@ -196,8 +196,8 @@ const mailTemplates = [
     header: "REFUND DONE",
     description: "Refund processed successfully",
     keywords: ["refund done", "refund successful", "refund sucessful", "refund completed", "refund processed", "refund success", "refund"],
-    type: "dynamic",
-    defaultSelections: { workingDays: 7 },
+    type: "hybrid",
+    defaultSelections: { workingDays: 7, neftRefund: false },
     fields: [
       { key: "amount", label: "Refund Amount", placeholder: "e.g. 5000 or Rs 5000", type: "text" }
     ]
@@ -832,11 +832,16 @@ function buildSF() {
 
 /* ---------- REFUND DONE ---------- */
 function buildRefund() {
+  const s = appState.sectionSelections;
   const rawAmt = appState.fieldValues.amount || "";
   const cleaned = cleanAmount(rawAmt);
   const amt = cleaned ? formatIndianNumber(cleaned, 2) : "[AMOUNT]";
   const days = appState.workingDays || 7;
   const unit = days === 1 ? "working day" : "working days";
+
+  const accountWording = s.neftRefund 
+    ? "the bank account details shared by you" 
+    : "your source account";
 
   return [
     "Greetings from PolicyBazaar.com!",
@@ -845,7 +850,7 @@ function buildRefund() {
     "",
     `We would like to inform you that your refund of Rs. ${amt} has been processed successfully.`,
     "",
-    `The refund amount is expected to reflect within ${days} ${unit} in the applicable account as per the refund details available for your request.`
+    `The refund amount is expected to reflect within ${days} ${unit} in ${accountWording}.`
   ].join("\n");
 }
 
@@ -1491,6 +1496,7 @@ function renderSFControls(host) {
 
 /* ---------- REFUND Controls ---------- */
 function renderRefundControls(host) {
+  const s = appState.sectionSelections;
   const grp = createGroup("Refund Details");
 
   const amtLbl = document.createElement("label");
@@ -1530,6 +1536,18 @@ function renderRefundControls(host) {
   grp.appendChild(chipSel);
 
   host.appendChild(grp);
+
+  const optGrp = createGroup("Options");
+  optGrp.appendChild(createToggleRow(
+    "Refund to NEFT / Bank Account",
+    "Show bank account details shared by you instead of source account",
+    !!s.neftRefund,
+    val => {
+      s.neftRefund = val;
+      updatePreview();
+    }
+  ));
+  host.appendChild(optGrp);
 }
 
 /* ---------- BAJAJ OT Controls ---------- */
