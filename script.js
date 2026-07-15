@@ -38,7 +38,8 @@ const DOC_MAP = [
   { keys: ["noc"], out: "NOC" },
   { keys: ["fitness", "fitness certificate"], out: "FITNESS CERTIFICATE" },
   { keys: ["form35", "form 35"], out: "FORM 35" },
-  { keys: ["pf", "proposal form", "prosal form", "proposal", "prosal"], out: "PROPOSAL FORM" }
+  { keys: ["pf", "proposal form", "prosal form", "proposal", "prosal"], out: "PROPOSAL FORM" },
+  { keys: ["ncb", "ncb confirmation", "ncb letter", "ncb confirmation letter"], out: "NCB CONFIRMATION LETTER" }
 ];
 
 function normalizeDocument(raw) {
@@ -770,6 +771,10 @@ function buildRF() {
     parts.push("We request you to kindly keep the Endorsed copy along with your original policy copy for future reference.");
   }
 
+  if (s.ncbNote) {
+    parts.push("Note: NCB Confirmation Letter may be required to proceed further with your request.");
+  }
+
   return parts.join("\n\n");
 }
 
@@ -1394,6 +1399,7 @@ function renderRFControls(host) {
     const extrasGrp = createGroup("Extras");
     extrasGrp.appendChild(createToggleRow("Charges / Inspection", "Possible charges & inspection note", s.charges, val => { s.charges = val; updatePreview(); }));
     extrasGrp.appendChild(createToggleRow("Original + Endorsed Copy", "Keep both copies note", s.originalCopy, val => { s.originalCopy = val; updatePreview(); }));
+    extrasGrp.appendChild(createToggleRow("NCB Note", "Include NCB Confirmation Letter requirement note", s.ncbNote, val => { s.ncbNote = val; updatePreview(); }));
     host.appendChild(extrasGrp);
   }
 
@@ -1979,7 +1985,7 @@ function selectTemplate(id) {
     appState.sectionSelections = {
       greeting: true, reference: true, forwarded: true,
       documents: false, updateDate: true, tat: true,
-      charges: true, originalCopy: true
+      charges: true, originalCopy: true, ncbNote: false
     };
   } else if (tpl.id === "ownership_transfer") {
     appState.sectionSelections = { clarification: false };
