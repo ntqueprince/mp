@@ -759,3 +759,20 @@ body.pip-mode .app-shell {
   min-height: 100vh;
 }
 body.pip-mode .header-actions #pipBtn { display: none; }
+
+/* Delete Line Button for Preview */
+.delete-line-btn {
+  margin-left: 8px;
+  cursor: pointer;
+  color: #ff4d4d;
+  font-weight: bold;
+  font-size: 15px;
+  user-select: none;
+  display: inline-block;
+  vertical-align: middle;
+  transition: transform 0.2s, color 0.2s;
+}
+.delete-line-btn:hover {
+  color: #cc0000;
+  transform: scale(1.3);
+}
