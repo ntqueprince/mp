@@ -1121,18 +1121,67 @@ function buildTat24Hr() {
 }
 
 /* ---------- REQUEST CLOSURE ---------- */
+function polishConcern(raw) {
+  const clean = raw.trim().toLowerCase();
+  if (!clean) return "";
+  const words = clean.split(/\s+/);
+  if (words.length > 4 || raw.length > 30) {
+    return raw;
+  }
+  const mappings = [
+    { keys: ["ncb", "no claim bonus"], label: "NCB (No Claim Bonus) update" },
+    { keys: ["address", "addr"], label: "Address update" },
+    { keys: ["nominee"], label: "Nominee details update" },
+    { keys: ["cancellation", "cancel"], label: "Policy cancellation" },
+    { keys: ["mobile", "phone", "contact", "number"], label: "Mobile number update" },
+    { keys: ["email", "mail"], label: "Email ID update" },
+    { keys: ["name", "owner name"], label: "Name correction" },
+    { keys: ["chassis"], label: "Chassis number correction" },
+    { keys: ["engine"], label: "Engine number correction" },
+    { keys: ["reg", "registration", "vehicle number"], label: "Registration number correction" },
+    { keys: ["model", "variant", "make"], label: "Vehicle details correction" },
+    { keys: ["pyp", "previous year", "previous policy"], label: "Previous policy details update" },
+    { keys: ["gender"], label: "Gender correction" },
+    { keys: ["dob", "date of birth"], label: "Date of birth correction" }
+  ];
+  for (const m of mappings) {
+    if (m.keys.some(k => clean.includes(k))) {
+      return m.label;
+    }
+  }
+  return raw.replace(/\b\w/g, c => c.toUpperCase());
+}
+
 function buildClosure() {
+  const manual = (appState.manualText || "").trim();
+  let closureParagraph = "We would like to inform you that, as per our telephonic conversation, we are proceeding with the closure of this request as your query has been addressed.";
+
+  if (manual) {
+    const cleanLower = manual.toLowerCase();
+    const isMapped = [
+      "ncb", "no claim bonus", "address", "addr", "nominee", "cancellation", "cancel", 
+      "mobile", "phone", "contact", "number", "email", "mail", "name", "owner name", 
+      "chassis", "engine", "reg", "registration", "vehicle number", "model", "variant", 
+      "make", "pyp", "previous year", "previous policy", "gender", "dob", "date of birth"
+    ].some(k => cleanLower.includes(k)) || manual.split(/\s+/).length <= 3;
+
+    if (isMapped) {
+      const polished = polishConcern(manual);
+      closureParagraph = `We would like to inform you that, as per our telephonic conversation regarding your query/request for ${polished}, we are proceeding with the closure of this request as the necessary details have been shared and you do not wish to proceed further.`;
+    } else {
+      closureParagraph = `We would like to inform you that, as per our telephonic conversation, we are proceeding with the closure of this request as your query has been addressed.\n\n${manual}`;
+    }
+  }
+
   const parts = [
     "Greetings from PolicyBazaar.com!",
     "",
     "This is with reference to your request.",
     "",
-    "We would like to inform you that, as per our telephonic conversation, we are proceeding with the closure of this request as your query has been addressed."
+    closureParagraph,
+    "",
+    "We appreciate your understanding in this regard."
   ];
-  const manual = (appState.manualText || "").trim();
-  if (manual) {
-    parts.push("", manual);
-  }
   return parts.join("\n");
 }
 
