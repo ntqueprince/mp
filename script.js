@@ -319,19 +319,9 @@ const mailTemplates = [
     id: "complete_mismatch",
     header: "COMPLETE MISMATCH",
     description: "Registration, chassis and engine details all mismatched",
-    keywords: ["complete mismatch", "complete miss match", "total mismatch", "total miss match", "mismatch", "missmatch", "miss match", "all details mismatch", "details mismatch", "reg chassis engine mismatch", "complete details mismatch"],
-    type: "fixed",
-    body: [
-      "Greetings from PolicyBazaar.com!",
-      "",
-      "This is with reference to your request.",
-      "",
-      "We would like to inform you that the details mentioned in the policy are completely mismatched, as the Registration Number, Chassis Number, and Engine Number are all incorrect.",
-      "",
-      "Due to the complete mismatch in the vehicle details, correction and cancellation of the policy are not possible.",
-      "",
-      "We appreciate your understanding in this regard."
-    ].join("\n")
+    keywords: ["complete mismatch", "complete miss match", "total mismatch", "total miss match", "mismatch", "missmatch", "miss match", "all details mismatch", "details mismatch", "reg chassis engine mismatch", "complete details mismatch", "multiple mismatch", "multiple miss match"],
+    type: "selectable",
+    defaultSelections: { includeCancellation: true }
   },
 
   /* ---------- 9. OD VAHAN ---------- */
@@ -569,6 +559,27 @@ const mailTemplates = [
     description: "Close request after telephonic conversation",
     keywords: ["close request", "request close", "closing request", "closure", "close ticket", "ticket close", "call discussion", "telephonic conversation", "as discussed", "case close", "request closure"],
     type: "dynamic"
+  },
+  /* ---------- DUPLICATE MAIL ---------- */
+  {
+    id: "duplicate_mail",
+    header: "DUPLICATE MAIL",
+    description: "Close request due to duplication under active request",
+    keywords: ["duplicate mail", "duplicate request", "duplicate", "already included", "active request", "duplicate processing", "close duplicate", "request close"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your request.",
+      "",
+      "We would like to inform you that the concern raised through this request is already included in an existing active request and is currently under process.",
+      "",
+      "To ensure efficient handling and avoid duplicate processing, all related concerns will be addressed under the existing active request.",
+      "",
+      "Accordingly, this request is being closed, and the existing active request will continue to be processed until all applicable concerns are resolved.",
+      "",
+      "We appreciate your patience and understanding."
+    ].join("\n")
   }
 ];
 
@@ -689,6 +700,7 @@ function buildPreview() {
     case "two_w_video_inspection": return buildTwoWVideoInspection();
     case "as_per_rc_no_correction": return buildAsPerRcNoCorrection();
     case "request_closure": return buildClosure();
+    case "complete_mismatch": return buildCompleteMismatch();
     default: return tpl.body || "";
   }
 }
@@ -1124,6 +1136,39 @@ function buildClosure() {
   return parts.join("\n");
 }
 
+/* ---------- COMPLETE MISMATCH ---------- */
+function buildCompleteMismatch() {
+  const s = appState.sectionSelections;
+  const parts = [
+    "Greetings from PolicyBazaar.com!",
+    "",
+    "This is with reference to your request.",
+    "",
+    "We would like to inform you that the details mentioned in the policy are completely mismatched, as the Registration Number, Chassis Number, and Engine Number do not match the vehicle's Registration Certificate (RC)."
+  ];
+
+  parts.push(
+    "",
+    "To process the correction, we require the Registration Certificate (RC) of the same vehicle reflecting the correct Registration Number, Chassis Number, and Engine Number. Without the correct RC, the requested correction cannot be processed."
+  );
+
+  if (s.includeCancellation) {
+    parts.push(
+      "",
+      "Alternatively, if you wish to proceed with cancellation of the policy, the insurer requires an alternative policy issued for the same vehicle with the correct Registration Number, Chassis Number, and Engine Number.",
+      "",
+      "Additionally, please note that there will be an INR 118 administrative fee, along with a deduction based on the policy usage, which will be determined by the insurer after the cancellation request is raised."
+    );
+  }
+
+  parts.push(
+    "",
+    "We appreciate your understanding in this regard."
+  );
+
+  return parts.join("\n");
+}
+
 /* =========================================================
    RENDER � LEFT CONTROLS PANE
    ========================================================= */
@@ -1169,6 +1214,7 @@ function renderControls() {
     case "two_w_video_inspection": renderTwoWVideoInspectionControls(host); break;
     case "as_per_rc_no_correction": renderAsPerRcNoCorrectionControls(host); break;
     case "request_closure": renderClosureControls(host); break;
+    case "complete_mismatch": renderCompleteMismatchControls(host); break;
   }
 }
 
@@ -1868,6 +1914,21 @@ function renderClosureControls(host) {
     });
     grp.appendChild(rm);
   }
+  host.appendChild(grp);
+}
+
+/* ---------- COMPLETE MISMATCH Controls ---------- */
+function renderCompleteMismatchControls(host) {
+  const grp = createGroup("Options");
+  grp.appendChild(createToggleRow(
+    "Cancellation Details",
+    "Include policy cancellation option and administrative fee info",
+    !!appState.sectionSelections.includeCancellation,
+    val => {
+      appState.sectionSelections.includeCancellation = val;
+      updatePreview();
+    }
+  ));
   host.appendChild(grp);
 }
 
