@@ -182,12 +182,9 @@ const mailTemplates = [
     id: "sf_payment",
     header: "SF PAYMENT",
     description: "Premium shortfall payment link mail",
-    keywords: ["sf mail", "sf link", "shortfall", "short fall", "premium shortfall", "payment shortfall", "sf"],
-    type: "dynamic",
-    fields: [
-      { key: "amount", label: "Shortfall Amount", placeholder: "e.g. 5000 or Rs. 5000/-", type: "text" },
-      { key: "link", label: "Payment Link", placeholder: "Paste payment link", type: "text" }
-    ]
+    keywords: ["sf mail", "sf link", "shortfall", "short fall", "premium shortfall", "payment shortfall", "sf", "idv", "idv confirmation", "new idv"],
+    type: "selectable",
+    defaultSelections: { confirmIdv: false }
   },
 
   /* ---------- 4. REFUND DONE ---------- */
@@ -822,17 +819,38 @@ function buildInsuredPersonChange() {
 }
 /* ---------- SF PAYMENT ---------- */
 function buildSF() {
+  const s = appState.sectionSelections;
   const rawAmt = appState.fieldValues.amount || "";
   const cleaned = cleanAmount(rawAmt);
   const amt = cleaned ? formatIndianNumber(cleaned) : "[AMOUNT]";
   const link = (appState.fieldValues.link || "").trim() || "[PAYMENT LINK]";
+
+  if (s.confirmIdv) {
+    const rawIdv = appState.fieldValues.newIdv || "";
+    const cleanedIdv = cleanAmount(rawIdv);
+    const idv = cleanedIdv ? formatIndianNumber(cleanedIdv) : "[NEW IDV]";
+
+    return [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your request.",
+      "",
+      `We would like to inform you that, as confirmed by the Insurer, due to the requested changes in your policy, there is a shortfall in the premium amount of Rs. ${amt}/- and the IDV of your vehicle will be revised to Rs. ${idv}/-.`,
+      "",
+      "We kindly request you to make the payment using the link provided below:",
+      "",
+      link,
+      "",
+      `Once the payment is completed, kindly share the payment screenshot along with your confirmation as "Agreed with new IDV" in reply to this email for further processing of your request.`
+    ].join("\n");
+  }
 
   return [
     "Greetings from PolicyBazaar.com!",
     "",
     "This is with reference to your request.",
     "",
-    `We would like to inform you that, as confirmed by the Insurer, there is a shortfall in the premium amount of Rs. ${amt}/- for your insurance policy.`,
+    `We would like to inform you that, as confirmed by the Insurer, due to the requested changes in your policy, there is a shortfall in the premium amount of Rs. ${amt}/- for your insurance policy.`,
     "",
     "We kindly request you to make the payment using the link provided below:",
     "",
@@ -1553,6 +1571,7 @@ function renderDocChips(host) {
 
 /* ---------- SF Controls ---------- */
 function renderSFControls(host) {
+  const s = appState.sectionSelections;
   const grp = createGroup("Payment Details");
 
   const amtLbl = document.createElement("label");
@@ -1587,6 +1606,38 @@ function renderSFControls(host) {
   grp.appendChild(linkInput);
 
   host.appendChild(grp);
+
+  const optGrp = createGroup("IDV Options");
+  optGrp.appendChild(createToggleRow(
+    "IDV Change Confirmation",
+    "Request confirmation of new IDV along with shortfall payment",
+    !!s.confirmIdv,
+    val => {
+      s.confirmIdv = val;
+      renderControls();
+      updatePreview();
+    }
+  ));
+
+  if (s.confirmIdv) {
+    const idvLbl = document.createElement("label");
+    idvLbl.className = "ctrl-label";
+    idvLbl.style.marginTop = "10px";
+    idvLbl.textContent = "New IDV Amount";
+    const idvInput = document.createElement("input");
+    idvInput.type = "text";
+    idvInput.className = "text-input";
+    idvInput.placeholder = "e.g. 450000 or Rs. 4,50,000/-";
+    idvInput.value = appState.fieldValues.newIdv || "";
+    idvInput.addEventListener("input", () => {
+      appState.fieldValues.newIdv = idvInput.value;
+      updatePreview();
+    });
+    optGrp.appendChild(idvLbl);
+    optGrp.appendChild(idvInput);
+  }
+
+  host.appendChild(optGrp);
 }
 
 /* ---------- REFUND Controls ---------- */
