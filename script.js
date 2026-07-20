@@ -39,7 +39,8 @@ const DOC_MAP = [
   { keys: ["fitness", "fitness certificate"], out: "FITNESS CERTIFICATE" },
   { keys: ["form35", "form 35"], out: "FORM 35" },
   { keys: ["pf", "proposal form", "prosal form", "proposal", "prosal"], out: "PROPOSAL FORM" },
-  { keys: ["ncb", "ncb confirmation", "ncb letter", "ncb confirmation letter"], out: "NCB CONFIRMATION LETTER" }
+  { keys: ["ncb", "ncb confirmation", "ncb letter", "ncb confirmation letter"], out: "NCB CONFIRMATION LETTER" },
+  { keys: ["rto", "rto receipt", "rto receipt copy"], out: "RTO RECEIPT" }
 ];
 
 function normalizeDocument(raw) {
@@ -577,6 +578,47 @@ const mailTemplates = [
       "",
       "We appreciate your patience and understanding."
     ].join("\n")
+  },
+  /* ---------- BANK STATEMENT ---------- */
+  {
+    id: "bank_statement",
+    header: "BANK STATEMENT",
+    description: "Request bank/credit card statement for processed refund confirmation",
+    keywords: ["bank statement", "statement", "credit card statement", "refund details", "refund not received", "refund reflection", "statement request", "refund pending", "insurer refund"],
+    type: "selectable",
+    defaultSelections: { useSharedAccount: false, tatType: "24-48hr" }
+  },
+  /* ---------- VAS VOUCHER ---------- */
+  {
+    id: "vas_voucher",
+    header: "VAS VOUCHER",
+    description: "Share Value Added Service (VAS) voucher and helpline details",
+    keywords: ["vas", "value added service", "voucher", "vas voucher", "helpline", "vas number", "service voucher", "avail vas", "gift voucher"],
+    type: "selectable",
+    defaultSelections: {}
+  },
+  /* ---------- RUNNING CLAIM ---------- */
+  {
+    id: "running_claim",
+    header: "RUNNING CLAIM",
+    description: "Modification rejected due to an active running claim on policy",
+    keywords: ["running claim", "active claim", "claim pending", "claim settlement", "claim closure letter", "endorsement claim", "claim settlement letter", "claim process"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your request for making changes in your vehicle insurance policy.",
+      "",
+      "We would like to inform you that the Insurance Company cannot process the requested modification at this moment due to an active, ongoing claim on your policy.",
+      "",
+      "To proceed further, we request you to kindly:",
+      "",
+      "1. Allow the current claim process to complete successfully.",
+      "2. Obtain the Claim Closure Letter / Settlement Letter from the insurer once the claim is resolved.",
+      "3. Share a copy of the Claim Closure Letter with us so we can re-initiate your endorsement request.",
+      "",
+      "We appreciate your patience and cooperation in this matter."
+    ].join("\n")
   }
 ];
 
@@ -698,6 +740,8 @@ function buildPreview() {
     case "as_per_rc_no_correction": return buildAsPerRcNoCorrection();
     case "request_closure": return buildClosure();
     case "complete_mismatch": return buildCompleteMismatch();
+    case "bank_statement": return buildBankStatement();
+    case "vas_voucher": return buildVasVoucher();
     default: return tpl.body || "";
   }
 }
@@ -1236,6 +1280,52 @@ function buildCompleteMismatch() {
   return parts.join("\n");
 }
 
+/* ---------- BANK STATEMENT ---------- */
+function buildBankStatement() {
+  const s = appState.sectionSelections;
+
+  let tatText = "24-48 hours";
+  if (s.tatType === "2wd") tatText = "2 working days";
+  else if (s.tatType === "5wd") tatText = "5 working days";
+  else if (s.tatType === "7wd") tatText = "7 working days";
+  else if (s.tatType === "custom") {
+    const days = parseInt(appState.fieldValues.statementCustomDays, 10);
+    const unit = days === 1 ? "working day" : "working days";
+    tatText = `${Number.isFinite(days) && days > 0 ? days : 1} ${unit}`;
+  }
+
+  return [
+    "Greetings from PolicyBazaar.com!",
+    "",
+    "This is with reference to your request.",
+    "",
+    "We would like to inform you that the refund has already been processed by the Insurance Company. If the refund amount is not reflecting in your account, we request you to kindly share your statement.",
+    "",
+    "Please share the bank/payment statement of the payment source (Credit Card/Debit Card/Bank Account/UPI) or the bank details provided for the refund, from payment date to till date.",
+    "",
+    `Once we receive the statement, we will check the status with the Insurer/Bank and update you within ${tatText}.`,
+    "",
+    "We appreciate your patience and understanding."
+  ].join("\n");
+}
+
+/* ---------- VAS VOUCHER ---------- */
+function buildVasVoucher() {
+  return [
+    "Greetings from PolicyBazaar.com!",
+    "",
+    "This is with reference to your request regarding the Value Added Service (VAS).",
+    "",
+    "Please find attached the voucher to avail of your Value Added Service (VAS).",
+    "",
+    "For any further queries or detailed information, you can contact the service helpline number provided at the bottom of the voucher.",
+    "",
+    "In case of any queries, you can write to us at care@policybazaar.com or reply directly to this email.",
+    "",
+    "We appreciate your understanding in this regard."
+  ].join("\n");
+}
+
 /* =========================================================
    RENDER � LEFT CONTROLS PANE
    ========================================================= */
@@ -1282,6 +1372,8 @@ function renderControls() {
     case "as_per_rc_no_correction": renderAsPerRcNoCorrectionControls(host); break;
     case "request_closure": renderClosureControls(host); break;
     case "complete_mismatch": renderCompleteMismatchControls(host); break;
+    case "bank_statement": renderBankStatementControls(host); break;
+    case "vas_voucher": renderVasVoucherControls(host); break;
   }
 }
 
@@ -1496,7 +1588,11 @@ function renderRFControls(host) {
         const chipSel = document.createElement("div");
         chipSel.className = "chip-select";
         chipSel.style.marginTop = "8px";
-        [5, 7, 10].forEach(n => {
+        
+        const predef = [5, 7, 10];
+        const isCustom = !predef.includes(appState.tatDays);
+
+        predef.forEach(n => {
           const c = document.createElement("button");
           c.type = "button";
           c.className = "chip-opt" + (appState.tatDays === n ? " active" : "");
@@ -1508,7 +1604,41 @@ function renderRFControls(host) {
           });
           chipSel.appendChild(c);
         });
+
+        const customBtn = document.createElement("button");
+        customBtn.type = "button";
+        customBtn.className = "chip-opt" + (isCustom ? " active" : "");
+        customBtn.textContent = "Custom";
+        customBtn.addEventListener("click", () => {
+          if (!isCustom) {
+            appState.tatDays = 3; // Default custom value
+          }
+          renderControls();
+          updatePreview();
+        });
+        chipSel.appendChild(customBtn);
         tatGrp.appendChild(chipSel);
+
+        if (isCustom) {
+          const customWrap = document.createElement("div");
+          customWrap.style.marginTop = "10px";
+          const lbl = document.createElement("label");
+          lbl.className = "ctrl-label";
+          lbl.textContent = "Custom TAT Days";
+          const inp = document.createElement("input");
+          inp.type = "number";
+          inp.min = "1";
+          inp.className = "text-input";
+          inp.value = appState.tatDays;
+          inp.addEventListener("input", () => {
+            const val = parseInt(inp.value, 10);
+            appState.tatDays = Number.isFinite(val) && val > 0 ? val : 1;
+            updatePreview();
+          });
+          customWrap.appendChild(lbl);
+          customWrap.appendChild(inp);
+          tatGrp.appendChild(customWrap);
+        }
       }
     }
     host.appendChild(tatGrp);
@@ -2029,6 +2159,74 @@ function renderCompleteMismatchControls(host) {
       updatePreview();
     }
   ));
+  host.appendChild(grp);
+}
+
+/* ---------- BANK STATEMENT Controls ---------- */
+function renderBankStatementControls(host) {
+  const s = appState.sectionSelections;
+
+  // No inputs needed for date since we hardcode "payment date"
+
+  // TAT Selection Group
+  const tatGrp = createGroup("TAT Options");
+
+  const options = [
+    { value: "24-48hr", label: "24-48 Hours" },
+    { value: "2wd", label: "2 Working Days" },
+    { value: "5wd", label: "5 Working Days" },
+    { value: "7wd", label: "7 Working Days" },
+    { value: "custom", label: "Custom WD" }
+  ];
+
+  const selectWrap = document.createElement("div");
+  selectWrap.className = "chip-select";
+  selectWrap.style.marginTop = "8px";
+
+  options.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "chip-opt" + (s.tatType === opt.value ? " active" : "");
+    btn.textContent = opt.label;
+    btn.addEventListener("click", () => {
+      s.tatType = opt.value;
+      renderControls();
+      updatePreview();
+    });
+    selectWrap.appendChild(btn);
+  });
+  tatGrp.appendChild(selectWrap);
+
+  if (s.tatType === "custom") {
+    const customLbl = document.createElement("label");
+    customLbl.className = "ctrl-label";
+    customLbl.style.marginTop = "10px";
+    customLbl.textContent = "Custom Working Days";
+    const customInput = document.createElement("input");
+    customInput.type = "number";
+    customInput.min = "1";
+    customInput.className = "text-input";
+    customInput.placeholder = "e.g. 3";
+    customInput.value = appState.fieldValues.statementCustomDays || "";
+    customInput.addEventListener("input", () => {
+      appState.fieldValues.statementCustomDays = customInput.value;
+      updatePreview();
+    });
+    tatGrp.appendChild(customLbl);
+    tatGrp.appendChild(customInput);
+  }
+
+  host.appendChild(tatGrp);
+}
+
+/* ---------- VAS VOUCHER Controls ---------- */
+function renderVasVoucherControls(host) {
+  const grp = createGroup("Info");
+  const info = document.createElement("div");
+  info.style.fontSize = "12.5px";
+  info.style.color = "var(--text-soft)";
+  info.textContent = "This template refers to the helpline number printed directly on the voucher.";
+  grp.appendChild(info);
   host.appendChild(grp);
 }
 
