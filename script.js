@@ -10,6 +10,7 @@ const appState = {
   fieldValues: {},          // { fieldKey: value }
   sectionSelections: {},    // { sectionKey: boolean }
   documents: [],            // for RF template
+  nameCorrectionDocs: [],   // for Ownership Transfer Name Correction
   workingMode: false,       // RF
   workingDays: 5,           // RF working mode default
   tatDays: 10,              // RF
@@ -40,10 +41,27 @@ const DOC_MAP = [
   { keys: ["form35", "form 35"], out: "FORM 35" },
   { keys: ["pf", "proposal form", "prosal form", "proposal", "prosal"], out: "PROPOSAL FORM" },
   { keys: ["ncb", "ncb confirmation", "ncb letter", "ncb confirmation letter"], out: "NCB CONFIRMATION LETTER" },
-  { keys: ["rto", "rto receipt", "rto receipt copy"], out: "RTO RECEIPT" }
+  { keys: ["rto", "rto receipt", "rto receipt copy"], out: "RTO RECEIPT" },
+  { keys: ["gst", "gst invoice", "gst bill", "gst i"], out: "GST INVOICE" },
+  { keys: ["gst certificate", "gst cert", "gst copy", "insured gst", "gst c"], out: "GST CERTIFICATE IN THE NAME OF INSURED" }
 ];
 
 function normalizeDocument(raw) {
+  if (!raw) return "";
+  const original = raw.trim();
+  const lowerRaw = original.toLowerCase();
+
+  // If contains " or " or "/" or " / " or " and "
+  if (lowerRaw.includes(" or ") || lowerRaw.includes("/") || lowerRaw.includes(" and ")) {
+    const parts = original.split(/\s+or\s+|\s*\/\s*|\s+and\s+/i);
+    const normalizedParts = parts.map(part => normalizeSingleDocument(part));
+    return normalizedParts.filter(p => p).join(" OR ");
+  }
+
+  return normalizeSingleDocument(original);
+}
+
+function normalizeSingleDocument(raw) {
   if (!raw) return "";
   const original = raw.trim();
   const key = original.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
@@ -57,11 +75,10 @@ function normalizeDocument(raw) {
       const normalizedDocKey = docKey.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
       if (!normalizedDocKey) continue;
       const pattern = new RegExp(`(^|\\s)${escapeRegExp(normalizedDocKey)}(\\s|$)`);
-      if (pattern.test(key)) return key.replace(pattern, `$1${item.out}$2`).replace(/\\s+/g, " ").trim().toUpperCase();
+      if (pattern.test(key)) return key.replace(pattern, `$1${item.out}$2`).replace(/\s+/g, " ").trim().toUpperCase();
     }
   }
 
-  // Unknown -> uppercase
   return original.toUpperCase();
 }
 
@@ -175,6 +192,40 @@ const mailTemplates = [
       "Please find attached the Endorsed soft copy of your policy.",
       "",
       "We request you to kindly keep the Endorsed copy along with your original policy copy for future reference."
+    ].join("\n")
+  },
+
+  /* ---------- NCB CONFIRMATION RECEIVED ---------- */
+  {
+    id: "ncb_received",
+    header: "NCB CONFIRMATION LETTER",
+    description: "Share received No Claim Bonus (NCB) confirmation letter",
+    keywords: ["ncb received", "ncb confirmation", "ncb letter", "ncb confirmation letter", "ncb letter received", "no claim bonus"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is in reference to your request.",
+      "",
+      "Please find attached the No Claim Bonus (NCB) confirmation letter, as requested."
+    ].join("\n")
+  },
+
+  /* ---------- GST ADDITION NOT POSSIBLE ---------- */
+  {
+    id: "gst_not_possible",
+    header: "GST ADDITION NOT POSSIBLE",
+    description: "Informing customer that GST addition/update is not allowed by the insurer post policy issuance",
+    keywords: ["gst addition not possible", "gst", "gst update", "gst addition", "gst details", "not possible", "gst mismatch"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your request regarding the addition of GST details to your active insurance policy.",
+      "",
+      "We forwarded your request to the insurance provider for processing. However, the insurer has informed us that as per their guidelines, they do not allow the addition or modification of GST details once the policy has been generated and issued. Since this constraint is enforced directly by the insurer, we are unable to make any changes to the tax invoice at this stage.",
+      "",
+      "We sincerely regret the inconvenience this may cause and appreciate your understanding and cooperation."
     ].join("\n")
   },
 
@@ -547,7 +598,7 @@ const mailTemplates = [
     id: "ownership_transfer",
     header: "OWNERSHIP TRANSFER",
     description: "Request documents and new owner details for ownership transfer",
-    keywords: ["ownership transfer", "owner transfer", "transfer ownership", "name transfer", "new owner", "ownership", "rc holder", "name correction", "pyp rc holder", "transfer request"],
+    keywords: ["ownership transfer", "owner transfer", "transfer ownership", "name transfer", "new owner", "ownership", "rc holder", "name correction", "pyp rc holder", "transfer request", "OT", "ot"],
     type: "dynamic"
   },
   /* ---------- 17. REQUEST CLOSURE ---------- */
@@ -948,39 +999,78 @@ function buildAsPerRcNoCorrection() {
 }
 /* ---------- OWNERSHIP TRANSFER ---------- */
 function buildOwnershipTransfer() {
+  const s = appState.sectionSelections;
   const parts = [
     "Greetings from PolicyBazaar.com!",
     "",
-    "This is in reference to your request regarding your Car Insurance policy.",
-    "",
-    "We would like to inform you that we have forwarded your request to the insurance company."
+    "This is in reference to your request regarding your Car Insurance policy."
   ];
 
-  if (appState.documents.length > 0) {
-    let docBlock = "To proceed further, we kindly request you to share the following documents:\n";
-    for (const d of appState.documents) docBlock += "\n\u2022 " + d;
-    parts.push(docBlock);
+  if (s.clarification) {
+    parts.push(
+      "To proceed further, we request you to kindly confirm whether this request is for an Ownership Transfer or a Name Correction. Please share the respective documents and details as per your requirement:",
+      "",
+      "OPTION 1: For Ownership Transfer",
+      ""
+    );
+
+    let docsStr = "";
+    if (appState.documents.length > 0) {
+      docsStr = "Documents Required:\n" + appState.documents.map(d => `\u2022 ${d}`).join("\n") + "\n\n";
+    }
+
+    parts.push(
+      docsStr +
+      "New Owner Details Required:\n" +
+      "\u2022 Insured Name\n" +
+      "\u2022 Address\n" +
+      "\u2022 Email ID\n" +
+      "\u2022 Mobile Number\n" +
+      "\u2022 Date of Birth\n" +
+      "\u2022 Marital Status\n" +
+      "\u2022 Nominee Name\n" +
+      "\u2022 Nominee Date of Birth\n" +
+      "\u2022 Nominee Relationship with the Insured",
+      "",
+      "OPTION 2: For Name Correction",
+      "",
+      "Documents Required:\n" +
+      (appState.nameCorrectionDocs && appState.nameCorrectionDocs.length > 0
+        ? appState.nameCorrectionDocs.map(d => `\u2022 ${d}`).join("\n")
+        : "\u2022 Clear copy of the vehicle's Registration Certificate (RC)\n\u2022 Insured's ID proof (Aadhaar Card / PAN Card) reflecting the correct spelling of the name") + "\n\n" +
+      "Details Required:\n" +
+      "\u2022 Exact spelling of the Insured's Name to be corrected"
+    );
+  } else {
+    parts.push(
+      "We would like to inform you that we have forwarded your request to the insurance company."
+    );
+
+    if (appState.documents.length > 0) {
+      let docBlock = "To proceed further, we kindly request you to share the following documents:\n";
+      for (const d of appState.documents) docBlock += "\n\u2022 " + d;
+      parts.push(docBlock);
+    }
+
+    parts.push(
+      "Please also share the following details of the new owner:\n\n" +
+      "\u2022 Insured Name\n" +
+      "\u2022 Address\n" +
+      "\u2022 Email ID\n" +
+      "\u2022 Mobile Number\n" +
+      "\u2022 Date of Birth\n" +
+      "\u2022 Marital Status\n" +
+      "\u2022 Nominee Name\n" +
+      "\u2022 Nominee Date of Birth\n" +
+      "\u2022 Nominee Relationship with the Insured"
+    );
   }
 
   parts.push(
-    "Please also share the following details of the new owner:\n\n" +
-    "\u2022 Insured Name\n" +
-    "\u2022 Address\n" +
-    "\u2022 Email ID\n" +
-    "\u2022 Mobile Number\n" +
-    "\u2022 Date of Birth\n" +
-    "\u2022 Marital Status\n" +
-    "\u2022 Nominee Name\n" +
-    "\u2022 Nominee Date of Birth\n" +
-    "\u2022 Nominee Relationship with the Insured",
     "We would like to apprise you that the turnaround time for making the changes in your policy copy can take up to 10 days.",
     "Please note that there may be charges and inspections applicable, which will be communicated to you in future correspondence.",
     "We also request you to keep the endorsed copy along with your original policy copy for future reference."
   );
-
-  if (appState.sectionSelections.clarification) {
-    parts.push("Additionally, please confirm whether this request is for an ownership transfer or a name correction, as the previous year's policy indicates an ownership transfer. If it is a name correction, please provide the previous year policy with the RC holder's name.");
-  }
 
   return parts.join("\n\n");
 }
@@ -1216,7 +1306,14 @@ function polishConcern(raw) {
 
 function buildClosure() {
   const manual = (appState.manualText || "").trim();
-  let closureParagraph = "We would like to inform you that, as per our telephonic conversation, we are proceeding with the closure of this request as your query has been addressed.";
+  const warningActive = appState.sectionSelections.claimWarning;
+
+  let closureParagraph = "";
+  if (warningActive) {
+    closureParagraph = "We would like to inform you that, as per our telephonic conversation, we are proceeding with the closure of this request for now.";
+  } else {
+    closureParagraph = "We would like to inform you that, as per our telephonic conversation, we are proceeding with the closure of this request as your query has been addressed.";
+  }
 
   if (manual) {
     const cleanLower = manual.toLowerCase();
@@ -1229,9 +1326,17 @@ function buildClosure() {
 
     if (isMapped) {
       const polished = polishConcern(manual);
-      closureParagraph = `We would like to inform you that, as per our telephonic conversation regarding your query/request for ${polished}, we are proceeding with the closure of this request as the necessary details have been shared and you do not wish to proceed further.`;
+      if (warningActive) {
+        closureParagraph = `We would like to inform you that, as per our telephonic conversation regarding your query/request for ${polished}, we are proceeding with the closure of this request for now.`;
+      } else {
+        closureParagraph = `We would like to inform you that, as per our telephonic conversation regarding your query/request for ${polished}, we are proceeding with the closure of this request as the necessary details have been shared and you do not wish to proceed further.`;
+      }
     } else {
-      closureParagraph = `We would like to inform you that, as per our telephonic conversation, we are proceeding with the closure of this request as your query has been addressed.\n\n${manual}`;
+      if (warningActive) {
+        closureParagraph = `We would like to inform you that, as per our telephonic conversation, we are proceeding with the closure of this request for now.\n\n${manual}`;
+      } else {
+        closureParagraph = `We would like to inform you that, as per our telephonic conversation, we are proceeding with the closure of this request as your query has been addressed.\n\n${manual}`;
+      }
     }
   }
 
@@ -1240,10 +1345,20 @@ function buildClosure() {
     "",
     "This is with reference to your request.",
     "",
-    closureParagraph,
+    closureParagraph
+  ];
+
+  if (warningActive) {
+    parts.push(
+      "",
+      "We would also like to apprise you that in the event of a claim, any incorrect details on the policy copy may lead to complications or claim rejection from the insurer. Therefore, we request you to kindly arrange the required documents at the earliest and get the details verified or endorsed to avoid any issues during a claim."
+    );
+  }
+
+  parts.push(
     "",
     "We appreciate your understanding in this regard."
-  ];
+  );
   return parts.join("\n");
 }
 
@@ -1699,6 +1814,29 @@ function renderDocChips(host) {
   });
 }
 
+function renderNameDocChips(host) {
+  host.innerHTML = "";
+  if (!appState.nameCorrectionDocs) appState.nameCorrectionDocs = [];
+  appState.nameCorrectionDocs.forEach((d, idx) => {
+    const chip = document.createElement("span");
+    chip.className = "doc-chip";
+    const txt = document.createElement("span");
+    txt.textContent = d;
+    const rm = document.createElement("button");
+    rm.type = "button";
+    rm.setAttribute("aria-label", "Remove " + d);
+    rm.textContent = "x";
+    rm.addEventListener("click", () => {
+      appState.nameCorrectionDocs.splice(idx, 1);
+      renderNameDocChips(host);
+      updatePreview();
+    });
+    chip.appendChild(txt);
+    chip.appendChild(rm);
+    host.appendChild(chip);
+  });
+}
+
 /* ---------- SF Controls ---------- */
 function renderSFControls(host) {
   const s = appState.sectionSelections;
@@ -1967,7 +2105,10 @@ function renderTat24HrControls(host) {
 
 /* ---------- OWNERSHIP TRANSFER Controls ---------- */
 function renderOwnershipTransferControls(host) {
-  const docGrp = createGroup("Documents");
+  const s = appState.sectionSelections;
+
+  // 1. Documents for Ownership Transfer
+  const docGrp = createGroup("Ownership Transfer Documents");
   const docWrap = document.createElement("div");
   docWrap.innerHTML = `
     <div class="doc-input-row">
@@ -2001,12 +2142,55 @@ function renderOwnershipTransferControls(host) {
     renderDocChips(chips);
   }
 
+  // 2. Documents for Name Correction (if clarification is enabled)
+  if (s.clarification) {
+    const nameDocGrp = createGroup("Name Correction Documents");
+    const nameDocWrap = document.createElement("div");
+    nameDocWrap.innerHTML = `
+      <div class="doc-input-row">
+        <input type="text" class="text-input" id="nameDocInput" placeholder="Type document e.g. correct rc, pan, aadhar"/>
+        <button type="button" class="doc-add-btn" id="nameDocAddBtn">Add</button>
+      </div>
+      <div class="doc-chips" id="nameDocChips"></div>
+    `;
+    nameDocGrp.appendChild(nameDocWrap);
+    host.appendChild(nameDocGrp);
+
+    const nameInput = document.getElementById("nameDocInput");
+    const nameBtn = document.getElementById("nameDocAddBtn");
+    const nameChips = document.getElementById("nameDocChips");
+    if (nameInput && nameBtn && nameChips) {
+      const doAdd = () => {
+        const val = nameInput.value.trim();
+        if (!val) return;
+        const norm = normalizeDocument(val);
+        if (!appState.nameCorrectionDocs) appState.nameCorrectionDocs = [];
+        if (!appState.nameCorrectionDocs.includes(norm)) {
+          appState.nameCorrectionDocs.push(norm);
+        }
+        nameInput.value = "";
+        renderNameDocChips(nameChips);
+        updatePreview();
+      };
+      nameBtn.addEventListener("click", doAdd);
+      nameInput.addEventListener("keydown", e => {
+        if (e.key === "Enter") { e.preventDefault(); doAdd(); }
+      });
+      renderNameDocChips(nameChips);
+    }
+  }
+
+  // 3. Options
   const optGrp = createGroup("Options");
   optGrp.appendChild(createToggleRow(
     "Ownership / Name Correction Clarification",
     "Ask customer to confirm ownership transfer or name correction",
     appState.sectionSelections.clarification,
-    val => { appState.sectionSelections.clarification = val; updatePreview(); }
+    val => {
+      appState.sectionSelections.clarification = val;
+      renderControls();
+      updatePreview();
+    }
   ));
   host.appendChild(optGrp);
 
@@ -2145,6 +2329,19 @@ function renderClosureControls(host) {
     grp.appendChild(rm);
   }
   host.appendChild(grp);
+
+  const s = appState.sectionSelections;
+  const optGrp = createGroup("Options");
+  optGrp.appendChild(createToggleRow(
+    "Incorrect Details / Claim Warning",
+    "Include warning that incorrect policy details may affect claim settlement",
+    !!s.claimWarning,
+    val => {
+      s.claimWarning = val;
+      updatePreview();
+    }
+  ));
+  host.appendChild(optGrp);
 }
 
 /* ---------- COMPLETE MISMATCH Controls ---------- */
