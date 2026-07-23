@@ -43,7 +43,12 @@ const DOC_MAP = [
   { keys: ["ncb", "ncb confirmation", "ncb letter", "ncb confirmation letter"], out: "NCB CONFIRMATION LETTER" },
   { keys: ["rto", "rto receipt", "rto receipt copy"], out: "RTO RECEIPT" },
   { keys: ["gst", "gst invoice", "gst bill", "gst i"], out: "GST INVOICE" },
-  { keys: ["gst certificate", "gst cert", "gst copy", "insured gst", "gst c"], out: "GST CERTIFICATE IN THE NAME OF INSURED" }
+  { keys: ["gst certificate", "gst cert", "gst copy", "insured gst", "gst c"], out: "GST CERTIFICATE IN THE NAME OF INSURED" },
+  { keys: ["tp", "third party", "third party policy"], out: "THIRD PARTY POLICY" },
+  { keys: ["saod", "stand alone own damage", "stand alone own damage policy"], out: "STAND ALONE OWN DAMAGE (SAOD) POLICY" },
+  { keys: ["compre", "comprehensive", "comprehensive policy"], out: "COMPREHENSIVE POLICY" },
+  { keys: ["bund", "bundle", "bundle policy"], out: "BUNDLE POLICY" },
+  { keys: ["idv", "insured declared value"], out: "IDV (INSURED DECLARED VALUE)" }
 ];
 
 function normalizeDocument(raw) {
@@ -226,6 +231,24 @@ const mailTemplates = [
       "We forwarded your request to the insurance provider for processing. However, the insurer has informed us that as per their guidelines, they do not allow the addition or modification of GST details once the policy has been generated and issued. Since this constraint is enforced directly by the insurer, we are unable to make any changes to the tax invoice at this stage.",
       "",
       "We sincerely regret the inconvenience this may cause and appreciate your understanding and cooperation."
+    ].join("\n")
+  },
+
+  /* ---------- INSURER PORTAL UPDATED ---------- */
+  {
+    id: "insurer_portal_updated",
+    header: "INSURER PORTAL UPDATED",
+    description: "Informing customer that their policy is successfully updated on the insurer portal",
+    keywords: ["insurer portal updated", "portal update", "insurer portal", "portal", "update check", "updated"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your request.",
+      "",
+      "We are pleased to inform you that your policy has been successfully updated on the insurer's official portal.",
+      "",
+      "We request you to kindly check the portal to verify the updated status of your policy."
     ].join("\n")
   },
 
@@ -543,24 +566,20 @@ const mailTemplates = [
       "We sincerely appreciate your patience and understanding."
     ].join("\n")
   },
-  /* ---------- POI CHANGE NOT POSSIBLE ---------- */
+  /* ---------- CHANGES NOT POSSIBLE ---------- */
   {
-    id: "poi_change_not_possible",
-    header: "POI CHANGE NOT POSSIBLE",
-    description: "Insurance date change cannot be processed when previous policy is expired",
-    keywords: ["poi change", "period of insurance", "insurance date", "insurance dates", "date change", "policy date change", "pyp expired", "previous policy expired", "break in", "breakin", "policy break", "continuity break"],
-    type: "fixed",
-    body: [
-      "Greetings from PolicyBazaar.com!",
-      "",
-      "This is with reference to your request for a change in the insurance dates (Period of Insurance) in your policy.",
-      "",
-      "We would like to inform you that your previous policy had already expired before the current policy was renewed.",
-      "",
-      "As per the insurance company guidelines, the policy period cannot be changed in the current policy in such cases, as it is considered a break-in policy and was not renewed in continuity.",
-      "",
-      "Therefore, we will not be able to process the requested change in the insurance dates."
-    ].join("\n")
+    id: "change_not_possible",
+    header: "CHANGES NOT POSSIBLE",
+    description: "Informing customer that their requested endorsement (IDV, POI) cannot be processed",
+    keywords: ["changes not possible", "not possible", "idv not possible", "poi not possible", "idv endorsement", "poi change", "rejected"],
+    type: "selectable",
+    defaultSelections: {
+      idvNotPossible: true,
+      reasonThirdParty: true,
+      poiNotPossible: false,
+      reasonPrevTP: false,
+      reasonExpired: false
+    }
   },
   /* ---------- 16. ADDRESS CHANGE ---------- */
   {
@@ -793,6 +812,7 @@ function buildPreview() {
     case "complete_mismatch": return buildCompleteMismatch();
     case "bank_statement": return buildBankStatement();
     case "vas_voucher": return buildVasVoucher();
+    case "change_not_possible": return buildChangeNotPossible();
     default: return tpl.body || "";
   }
 }
@@ -839,7 +859,14 @@ function buildRF() {
 
   if (s.greeting) parts.push("Greetings from PolicyBazaar.com!");
   if (s.reference) parts.push("This is with reference to your request.");
-  if (s.forwarded) parts.push("We would like to inform you that we have forwarded your request to the insurance company.");
+  
+  if (s.forwarded) {
+    if (s.concernedTeam) {
+      parts.push("We would like to inform you that we have forwarded your request to the insurer for the necessary update.");
+    } else {
+      parts.push("We would like to inform you that we have forwarded your request to the insurance company.");
+    }
+  }
 
   if (s.documents && appState.documents.length > 0) {
     const hasProposalForm = appState.documents.includes("PROPOSAL FORM");
@@ -864,14 +891,18 @@ function buildRF() {
   }
 
   if (s.tat && !appState.workingMode) {
-    parts.push(`We would like to apprise you that the turnaround time for getting the changes made in your policy copy can take up to ${appState.tatDays} days.`);
+    if (s.concernedTeam) {
+      parts.push(`We would like to apprise you that the turnaround time for processing your request can take up to ${appState.tatDays} days.`);
+    } else {
+      parts.push(`We would like to apprise you that the turnaround time for getting the changes made in your policy copy can take up to ${appState.tatDays} days.`);
+    }
   }
 
-  if (s.charges && !appState.workingMode) {
+  if (s.charges && !appState.workingMode && !s.concernedTeam) {
     parts.push("We would like to update you that there may be charges and inspection applicable, which shall be communicated to you in future communication.");
   }
 
-  if (s.originalCopy && !appState.workingMode) {
+  if (s.originalCopy && !appState.workingMode && !s.concernedTeam) {
     parts.push("We request you to kindly keep the Endorsed copy along with your original policy copy for future reference.");
   }
 
@@ -1392,6 +1423,57 @@ function buildCompleteMismatch() {
     "We appreciate your understanding in this regard."
   );
 
+}
+
+/* ---------- CHANGES NOT POSSIBLE ---------- */
+function buildChangeNotPossible() {
+  let change = (appState.fieldValues.notPossibleChange || "").trim();
+  const reason = (appState.fieldValues.notPossibleReason || "").trim();
+
+  // Automatically expand abbreviations
+  change = change.replace(/\bidv\b/gi, "IDV (Insured Declared Value)");
+  change = change.replace(/\bpoi\b/gi, "POI (Period of Insurance)");
+
+  const parts = [
+    "Greetings from PolicyBazaar.com!",
+    "",
+    "This is with reference to your request regarding the modification in your insurance policy."
+  ];
+
+  if (change) {
+    parts.push(
+      "",
+      `We would like to inform you that the requested ${change} cannot be processed at this stage.`
+    );
+  } else {
+    parts.push(
+      "",
+      "We would like to inform you that the requested endorsement or changes cannot be processed at this stage."
+    );
+  }
+
+  if (reason) {
+    let reasonText = reason;
+    const lower = reason.toLowerCase();
+    if (lower.startsWith("since") || lower.startsWith("because") || lower.startsWith("as ")) {
+      reasonText = "Please note that " + reason;
+    }
+    // Capitalize first character
+    reasonText = reasonText.charAt(0).toUpperCase() + reasonText.slice(1);
+    if (!reasonText.endsWith(".")) {
+      reasonText += ".";
+    }
+    parts.push(
+      "",
+      reasonText
+    );
+  }
+
+  parts.push(
+    "",
+    "We sincerely regret the inconvenience caused to you and appreciate your understanding in this regard."
+  );
+
   return parts.join("\n");
 }
 
@@ -1489,6 +1571,7 @@ function renderControls() {
     case "complete_mismatch": renderCompleteMismatchControls(host); break;
     case "bank_statement": renderBankStatementControls(host); break;
     case "vas_voucher": renderVasVoucherControls(host); break;
+    case "change_not_possible": renderChangeNotPossibleControls(host); break;
   }
 }
 
@@ -1568,6 +1651,7 @@ function renderRFControls(host) {
   grp1.appendChild(createToggleRow("Greeting", "Greetings from PolicyBazaar.com!", s.greeting, val => { s.greeting = val; updatePreview(); }));
   grp1.appendChild(createToggleRow("Reference", "This is with reference to your request.", s.reference, val => { s.reference = val; updatePreview(); }));
   grp1.appendChild(createToggleRow("Request Forwarded", "Forwarded to insurance company", s.forwarded, val => { s.forwarded = val; updatePreview(); }));
+  grp1.appendChild(createToggleRow("Forward to Insurer", "Forwarded to insurer for the update (for general query / M-Parivahan)", !!s.concernedTeam, val => { s.concernedTeam = val; updatePreview(); }));
   host.appendChild(grp1);
 
   /* Documents */
@@ -2356,7 +2440,89 @@ function renderCompleteMismatchControls(host) {
       updatePreview();
     }
   ));
+}
+
+/* ---------- CHANGES NOT POSSIBLE Controls ---------- */
+function renderChangeNotPossibleControls(host) {
+  const grp = createGroup("Custom Rejection Details");
+
+  const changeLbl = document.createElement("label");
+  changeLbl.className = "ctrl-label";
+  changeLbl.textContent = "What change is not possible? (e.g. IDV update)";
+  const changeInp = document.createElement("input");
+  changeInp.type = "text";
+  changeInp.className = "text-input";
+  changeInp.placeholder = "e.g. IDV update";
+  changeInp.value = appState.fieldValues.notPossibleChange || "";
+  changeInp.addEventListener("input", () => {
+    appState.fieldValues.notPossibleChange = changeInp.value;
+    updatePreview();
+  });
+  grp.appendChild(changeLbl);
+  grp.appendChild(changeInp);
+
+  const reasonLbl = document.createElement("label");
+  reasonLbl.className = "ctrl-label";
+  reasonLbl.style.marginTop = "10px";
+  reasonLbl.textContent = "Why is it not possible? (Reason)";
+  const reasonTa = document.createElement("textarea");
+  reasonTa.className = "text-input";
+  reasonTa.style.width = "100%";
+  reasonTa.style.minHeight = "80px";
+  reasonTa.style.resize = "vertical";
+  reasonTa.placeholder = "e.g. since this is a Third-Party policy, the vehicle itself is not covered...";
+  reasonTa.value = appState.fieldValues.notPossibleReason || "";
+  reasonTa.addEventListener("input", () => {
+    appState.fieldValues.notPossibleReason = reasonTa.value;
+    updatePreview();
+  });
+  grp.appendChild(reasonLbl);
+  grp.appendChild(reasonTa);
+
   host.appendChild(grp);
+
+  // Quick Presets
+  const presetGrp = createGroup("Quick Presets");
+  
+  const presets = [
+    {
+      name: "IDV (Third-Party)",
+      change: "IDV update",
+      reason: "since this is a Third-Party policy, the vehicle itself is not covered, and therefore, an Insured Declared Value (IDV) is not applicable"
+    },
+    {
+      name: "POI (Expired)",
+      change: "insurance dates (Period of Insurance) change",
+      reason: "your previous policy had already expired before the current policy was renewed. It is considered a break-in policy and was not renewed in continuity"
+    },
+    {
+      name: "POI (Previous TP)",
+      change: "insurance dates (Period of Insurance) change",
+      reason: "your previous year's policy was a Third-Party policy, and insurance dates cannot be aligned in continuity under these circumstances"
+    }
+  ];
+
+  const btnWrap = document.createElement("div");
+  btnWrap.className = "chip-select";
+  btnWrap.style.marginTop = "8px";
+
+  presets.forEach(p => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "chip-opt";
+    btn.textContent = p.name;
+    btn.addEventListener("click", () => {
+      appState.fieldValues.notPossibleChange = p.change;
+      appState.fieldValues.notPossibleReason = p.reason;
+      changeInp.value = p.change;
+      reasonTa.value = p.reason;
+      updatePreview();
+    });
+    btnWrap.appendChild(btn);
+  });
+
+  presetGrp.appendChild(btnWrap);
+  host.appendChild(presetGrp);
 }
 
 /* ---------- BANK STATEMENT Controls ---------- */
