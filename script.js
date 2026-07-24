@@ -48,7 +48,9 @@ const DOC_MAP = [
   { keys: ["saod", "stand alone own damage", "stand alone own damage policy"], out: "STAND ALONE OWN DAMAGE (SAOD) POLICY" },
   { keys: ["compre", "comprehensive", "comprehensive policy"], out: "COMPREHENSIVE POLICY" },
   { keys: ["bund", "bundle", "bundle policy"], out: "BUNDLE POLICY" },
-  { keys: ["idv", "insured declared value"], out: "IDV (INSURED DECLARED VALUE)" }
+  { keys: ["idv", "insured declared value"], out: "IDV (INSURED DECLARED VALUE)" },
+  { keys: ["address", "address proof", "addr", "address proof copy"], out: "ADDRESS PROOF REFLECTING THE EXACT SAME ADDRESS TO BE UPDATED" },
+  { keys: ["neft", "bank details", "bank detail", "cancelled cheque", "cheque", "passbook", "bank passbook", "neft details", "cancel"], out: "A CANCELLED CHEQUE OR BANK PASSBOOK OF THE INSURED PERSON AS PER POLICY" }
 ];
 
 function normalizeDocument(raw) {
@@ -159,6 +161,7 @@ const mailTemplates = [
     keywords: ["docs required", "document request", "documents required", "pending documents", "docs", "request documents"],
     type: "hybrid",
     defaultSelections: {
+      tat: true,
       charges: true,
       originalCopy: true
     }
@@ -829,17 +832,20 @@ function buildDocsRequired() {
     "This is with reference to your request."
   ];
 
-  if (appState.documents.length > 0) {
+  const formattedDocs = getFormattedDocuments();
+  if (formattedDocs.length > 0) {
     let docBlock = "We kindly request you to share the following document(s) to proceed further with your request:\n";
-    for (const d of appState.documents) docBlock += "\n\u2022 " + d;
+    for (const d of formattedDocs) docBlock += "\n\u2022 " + d;
     parts.push(docBlock);
   } else {
     parts.push("We kindly request you to share the required documents to proceed further with your request.");
   }
 
-  parts.push(
-    "We would like to apprise you that the turnaround time for getting the changes made in your policy copy can take up to 10 days."
-  );
+  if (s.tat !== false) {
+    parts.push(
+      "We would like to apprise you that the turnaround time for getting the changes made in your policy copy can take up to 10 days."
+    );
+  }
 
   if (s.charges) {
     parts.push("We would like to update you that there may be charges and inspection applicable, which shall be communicated to you in future communication.");
@@ -868,10 +874,11 @@ function buildRF() {
     }
   }
 
-  if (s.documents && appState.documents.length > 0) {
-    const hasProposalForm = appState.documents.includes("PROPOSAL FORM");
+  const formattedDocs = getFormattedDocuments();
+  if (s.documents && formattedDocs.length > 0) {
+    const hasProposalForm = formattedDocs.includes("PROPOSAL FORM");
     let docBlock = "We kindly request you to share the following documents to proceed further with your request:\n";
-    for (const d of appState.documents) docBlock += "\n\u2022 " + d;
+    for (const d of formattedDocs) docBlock += "\n\u2022 " + d;
     parts.push(docBlock);
 
     if (hasProposalForm) {
@@ -1045,9 +1052,10 @@ function buildOwnershipTransfer() {
       ""
     );
 
+    const formattedDocs = getFormattedDocuments();
     let docsStr = "";
-    if (appState.documents.length > 0) {
-      docsStr = "Documents Required:\n" + appState.documents.map(d => `\u2022 ${d}`).join("\n") + "\n\n";
+    if (formattedDocs.length > 0) {
+      docsStr = "Documents Required:\n" + formattedDocs.map(d => `\u2022 ${d}`).join("\n") + "\n\n";
     }
 
     parts.push(
@@ -1077,9 +1085,10 @@ function buildOwnershipTransfer() {
       "We would like to inform you that we have forwarded your request to the insurance company."
     );
 
-    if (appState.documents.length > 0) {
+    const formattedDocs = getFormattedDocuments();
+    if (formattedDocs.length > 0) {
       let docBlock = "To proceed further, we kindly request you to share the following documents:\n";
-      for (const d of appState.documents) docBlock += "\n\u2022 " + d;
+      for (const d of formattedDocs) docBlock += "\n\u2022 " + d;
       parts.push(docBlock);
     }
 
@@ -1629,6 +1638,12 @@ function renderDocsRequiredControls(host) {
 
   const optGrp = createGroup("Options");
   optGrp.appendChild(createToggleRow(
+    "Include TAT Line",
+    "Show turnaround time statement",
+    s.tat !== false,
+    val => { s.tat = val; updatePreview(); }
+  ));
+  optGrp.appendChild(createToggleRow(
     "Charges & Inspection Line",
     "Show charges applicable warning",
     !!s.charges,
@@ -1876,6 +1891,44 @@ function renderRFControls(host) {
   }
 }
 
+function getFormattedDocuments() {
+  const s = appState.sectionSelections;
+  const target = "ADDRESS PROOF REFLECTING THE EXACT SAME ADDRESS TO BE UPDATED";
+  return appState.documents.map(d => {
+    if (d === target && s.kycAddressOption) {
+      return "ADDRESS PROOF WITH SAME ADDRESS OR YOU WANT US TO PROCEED WITH THE ADDRESS MENTIONED IN THE KYC DOCUMENTS SHARED BY YOU";
+    }
+    return d;
+  });
+}
+
+function renderKycAddressToggle(parentEl) {
+  const s = appState.sectionSelections;
+  const target = "ADDRESS PROOF REFLECTING THE EXACT SAME ADDRESS TO BE UPDATED";
+  const hasAddr = appState.documents.includes(target);
+  
+  const existing = parentEl.querySelector(".kyc-toggle-wrap");
+  if (existing) existing.remove();
+
+  if (hasAddr) {
+    const wrap = document.createElement("div");
+    wrap.className = "kyc-toggle-wrap";
+    wrap.style.marginTop = "8px";
+    wrap.appendChild(createToggleRow(
+      "KYC Address Option",
+      "Allow customer to proceed with KYC address (Aadhaar Card)",
+      !!s.kycAddressOption,
+      val => {
+        s.kycAddressOption = val;
+        updatePreview();
+      }
+    ));
+    parentEl.appendChild(wrap);
+  } else {
+    s.kycAddressOption = false;
+  }
+}
+
 function renderDocChips(host) {
   host.innerHTML = "";
   appState.documents.forEach((d, idx) => {
@@ -1896,6 +1949,10 @@ function renderDocChips(host) {
     chip.appendChild(rm);
     host.appendChild(chip);
   });
+  
+  if (host.parentElement) {
+    renderKycAddressToggle(host.parentElement);
+  }
 }
 
 function renderNameDocChips(host) {
@@ -3190,11 +3247,12 @@ function init() {
   const card = document.getElementById("previewCard");
   card.addEventListener("dblclick", () => {
     if (!appState.activeTemplateId) return;
+    if (appState.previewEditing) return;
     card.textContent = buildPreview();
     card.setAttribute("contenteditable", "true");
     appState.previewEditing = true;
     card.focus();
-    showToast("Editing enabled � click outside to save", "success");
+    showToast("Editing enabled  click outside to save", "success");
   });
 
   card.addEventListener("click", e => {
