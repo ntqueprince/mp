@@ -40,7 +40,7 @@ const DOC_MAP = [
   { keys: ["fitness", "fitness certificate"], out: "FITNESS CERTIFICATE" },
   { keys: ["form35", "form 35"], out: "FORM 35" },
   { keys: ["pf", "proposal form", "prosal form", "proposal", "prosal"], out: "PROPOSAL FORM" },
-  { keys: ["ncb", "ncb confirmation", "ncb letter", "ncb confirmation letter"], out: "NCB CONFIRMATION LETTER" },
+  { keys: ["ncb", "ncb confirmation", "ncb letter", "ncb confirmation letter"], out: "NCB CONFIRMATION LETTER FROM PREVIOUS INSURER" },
   { keys: ["rto", "rto receipt", "rto receipt copy"], out: "RTO RECEIPT" },
   { keys: ["gst", "gst invoice", "gst bill", "gst i"], out: "GST INVOICE" },
   { keys: ["gst certificate", "gst cert", "gst copy", "insured gst", "gst c"], out: "GST CERTIFICATE IN THE NAME OF INSURED" },
@@ -692,6 +692,23 @@ const mailTemplates = [
       "",
       "We appreciate your patience and cooperation in this matter."
     ].join("\n")
+  },
+  /* ---------- DND ACTIVATED ---------- */
+  {
+    id: "dnd_activated",
+    header: "DND ACTIVATED",
+    description: "Informing customer that DND service has been activated within 24 hours upon request for data deletion",
+    keywords: ["dnd", "do not disturb", "data deletion", "delete data", "delete personal data", "erase data", "dnd activated", "dnd service"],
+    type: "fixed",
+    body: [
+      "Greetings from Policybazaar.com!",
+      "",
+      "This is in reference to your request regarding the deletion of personal data.",
+      "",
+      "While we are unable to erase all personal data as it is necessary for our records, we have successfully initiated the Do Not Disturb (DND) service for your mobile number.",
+      "",
+      "The DND service will be activated within the next 24 hours."
+    ].join("\n")
   }
 ];
 
@@ -1167,6 +1184,8 @@ function buildVideoInspection() {
     parts.push(`Note: We request you to upload the video again because ${reason.trim()}.`);
   }
 
+  parts.push("Note: Please ensure that the CNG cylinder is also clearly captured if the vehicle has an externally fitted CNG kit.");
+
   parts.push(
     "Inspection of your vehicle is mandatory for us to proceed with the requested changes in your policy.",
     "Please follow the below guidelines to upload a self-video inspection of your vehicle:",
@@ -1187,8 +1206,7 @@ function buildVideoInspection() {
     "10. Record the Engine Number and Chassis Number, which may be located under the front bonnet or below/beside the driver/front passenger seat.\n" +
     "11. Close the bonnet and record a complete 360-degree view of the vehicle as guided on the screen. Maintain an approximate distance of 2-3 feet from the vehicle.\n" +
     "12. After completing the recording, click the Upload button and ensure that you exit the screen only after the upload is completed successfully.",
-    "Once you successfully upload the video, kindly let us know so that we can proceed further with your request.",
-    "Note:\nPlease ensure that the CNG cylinder is also clearly captured if the vehicle has an externally fitted CNG kit."
+    "Once you successfully upload the video, kindly let us know so that we can proceed further with your request."
   );
 
   return parts.join("\n\n");
@@ -1288,6 +1306,7 @@ function buildRenewal() {
 function buildTat24Hr() {
   const mode = appState.fieldValues.tatMode || "24hr";
   const customDays = parseInt(appState.fieldValues.tatCustomDays, 10);
+  const s = appState.sectionSelections;
   let tatText = "24 hours";
 
   if (mode === "2wd") tatText = "2 working days";
@@ -1297,7 +1316,7 @@ function buildTat24Hr() {
     tatText = `${days} ${days === 1 ? "working day" : "working days"}`;
   }
 
-  return [
+  const parts = [
     "Greetings from PolicyBazaar.com!",
     "",
     "This is with reference to your request.",
@@ -1309,7 +1328,16 @@ function buildTat24Hr() {
     `Request you to kindly allow us ${tatText} to share the status update.`,
     "",
     "We appreciate your patience and understanding."
-  ].join("\n");
+  ];
+
+  if (s.cancellationFee) {
+    parts.push(
+      "",
+      "Additionally, please note that there will be an INR 118 administrative fee, along with a deduction based on the policy usage, which will be determined by the insurer after the cancellation request is raised."
+    );
+  }
+
+  return parts.join("\n");
 }
 
 /* ---------- REQUEST CLOSURE ---------- */
@@ -2242,6 +2270,16 @@ function renderTat24HrControls(host) {
   }
 
   host.appendChild(grp);
+
+  const s = appState.sectionSelections;
+  const optGrp = createGroup("Options");
+  optGrp.appendChild(createToggleRow(
+    "Cancellation Info",
+    "Show cancellation charges and fee structure",
+    !!s.cancellationFee,
+    val => { s.cancellationFee = val; updatePreview(); }
+  ));
+  host.appendChild(optGrp);
 }
 
 /* ---------- OWNERSHIP TRANSFER Controls ---------- */
