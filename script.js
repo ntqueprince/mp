@@ -50,7 +50,8 @@ const DOC_MAP = [
   { keys: ["bund", "bundle", "bundle policy"], out: "BUNDLE POLICY" },
   { keys: ["idv", "insured declared value"], out: "IDV (INSURED DECLARED VALUE)" },
   { keys: ["address", "address proof", "addr", "address proof copy"], out: "ADDRESS PROOF REFLECTING THE EXACT SAME ADDRESS TO BE UPDATED" },
-  { keys: ["neft", "bank details", "bank detail", "cancelled cheque", "cheque", "passbook", "bank passbook", "neft details", "cancel"], out: "A CANCELLED CHEQUE OR BANK PASSBOOK OF THE INSURED PERSON AS PER POLICY" }
+  { keys: ["neft", "bank details", "bank detail", "cancelled cheque", "cheque", "passbook", "bank passbook", "neft details", "cancel"], out: "A CANCELLED CHEQUE OR BANK PASSBOOK OF THE INSURED PERSON AS PER POLICY" },
+  { keys: ["zd", "zero dep", "zero depreciation"], out: "ZERO DEPRECIATION COVER" }
 ];
 
 function normalizeDocument(raw) {
@@ -709,6 +710,22 @@ const mailTemplates = [
       "",
       "The DND service will be activated within the next 24 hours."
     ].join("\n")
+  },
+  /* ---------- SBI OT ---------- */
+  {
+    id: "sbi_ot",
+    header: "SBI OT",
+    description: "SBI Ownership Transfer with PA Cover declaration and shortfall payment options",
+    keywords: ["sbi ot", "sbi ownership transfer", "sbi", "pa declaration", "shortfall 50", "pa cover owner driver", "sbi shortfall"],
+    type: "hybrid",
+    defaultSelections: {
+      paCoverSection: true,
+      shortfallPayment: true,
+      tat: true,
+      charges: true,
+      inspection: true,
+      originalCopy: true
+    }
   }
 ];
 
@@ -833,6 +850,7 @@ function buildPreview() {
     case "bank_statement": return buildBankStatement();
     case "vas_voucher": return buildVasVoucher();
     case "change_not_possible": return buildChangeNotPossible();
+    case "sbi_ot": return buildSbiOt();
     default: return tpl.body || "";
   }
 }
@@ -1342,12 +1360,30 @@ function buildTat24Hr() {
 
 /* ---------- REQUEST CLOSURE ---------- */
 function polishConcern(raw) {
-  const clean = raw.trim().toLowerCase();
+  let clean = raw.trim().toLowerCase();
   if (!clean) return "";
+
+  // Expand abbreviations
+  clean = clean.replace(/\bot\b/gi, "ownership transfer");
+  clean = clean.replace(/\btp\b/gi, "third party");
+  clean = clean.replace(/\bcpa\b/gi, "compulsory personal accident (CPA) cover");
+  clean = clean.replace(/\bncb\b/gi, "no claim bonus (NCB)");
+  clean = clean.replace(/\bpyp\b/gi, "previous year policy (PYP)");
+  clean = clean.replace(/\brc\b/gi, "registration certificate (RC)");
+
+  let expandedRaw = raw;
+  expandedRaw = expandedRaw.replace(/\bot\b/gi, "ownership transfer");
+  expandedRaw = expandedRaw.replace(/\btp\b/gi, "third party");
+  expandedRaw = expandedRaw.replace(/\bcpa\b/gi, "compulsory personal accident (CPA) cover");
+  expandedRaw = expandedRaw.replace(/\bncb\b/gi, "no claim bonus (NCB)");
+  expandedRaw = expandedRaw.replace(/\bpyp\b/gi, "previous year policy (PYP)");
+  expandedRaw = expandedRaw.replace(/\brc\b/gi, "registration certificate (RC)");
+
   const words = clean.split(/\s+/);
-  if (words.length > 4 || raw.length > 30) {
-    return raw;
+  if (words.length > 8 || raw.length > 50) {
+    return expandedRaw;
   }
+
   const mappings = [
     { keys: ["ncb", "no claim bonus"], label: "NCB (No Claim Bonus) update" },
     { keys: ["address", "addr"], label: "Address update" },
@@ -1362,14 +1398,17 @@ function polishConcern(raw) {
     { keys: ["model", "variant", "make"], label: "Vehicle details correction" },
     { keys: ["pyp", "previous year", "previous policy"], label: "Previous policy details update" },
     { keys: ["gender"], label: "Gender correction" },
-    { keys: ["dob", "date of birth"], label: "Date of birth correction" }
+    { keys: ["dob", "date of birth"], label: "Date of birth correction" },
+    { keys: ["ownership transfer", "ownership", "transfer"], label: "Ownership Transfer" },
+    { keys: ["third party", "third-party"], label: "Third-Party details update" },
+    { keys: ["compulsory personal accident", "personal accident"], label: "Compulsory Personal Accident (CPA) cover update" }
   ];
   for (const m of mappings) {
     if (m.keys.some(k => clean.includes(k))) {
       return m.label;
     }
   }
-  return raw.replace(/\b\w/g, c => c.toUpperCase());
+  return expandedRaw.replace(/\b\w/g, c => c.toUpperCase());
 }
 
 function buildClosure() {
@@ -1389,8 +1428,10 @@ function buildClosure() {
       "ncb", "no claim bonus", "address", "addr", "nominee", "cancellation", "cancel", 
       "mobile", "phone", "contact", "number", "email", "mail", "name", "owner name", 
       "chassis", "engine", "reg", "registration", "vehicle number", "model", "variant", 
-      "make", "pyp", "previous year", "previous policy", "gender", "dob", "date of birth"
-    ].some(k => cleanLower.includes(k)) || manual.split(/\s+/).length <= 3;
+      "make", "pyp", "previous year", "previous policy", "gender", "dob", "date of birth",
+      "third party", "tp", "cpa", "ot", "ownership transfer", "ownership", "transfer",
+      "claim", "inspection", "video", "charges"
+    ].some(k => cleanLower.includes(k)) || manual.split(/\s+/).length <= 8;
 
     if (isMapped) {
       const polished = polishConcern(manual);
@@ -1514,6 +1555,94 @@ function buildChangeNotPossible() {
   return parts.join("\n");
 }
 
+/* ---------- SBI OT ---------- */
+function buildSbiOt() {
+  const s = appState.sectionSelections;
+  const rawAmt = appState.fieldValues.amount || "";
+  const cleaned = cleanAmount(rawAmt);
+  const amt = cleaned ? formatIndianNumber(cleaned) : "50";
+  const link = (appState.fieldValues.link || "").trim() || "[PAYMENT LINK]";
+
+  const parts = [
+    "Greetings from Policybazaar.com!",
+    "",
+    "This is in reference to your request regarding the Transfer of Ownership for your vehicle insurance policy."
+  ];
+
+  const formattedDocs = getFormattedDocuments();
+  if (formattedDocs.length > 0) {
+    let docBlock = "To proceed further with your request, we kindly request you to share the following documents and details:\n";
+    for (const d of formattedDocs) {
+      docBlock += `\n\u2022 ${d}`;
+    }
+    
+    docBlock += "\n\nNew Owner Details:\n" +
+      "\u2022 Insured Name\n" +
+      "\u2022 Address\n" +
+      "\u2022 Email ID\n" +
+      "\u2022 Mobile Number\n" +
+      "\u2022 Date of Birth (DOB)\n" +
+      "\u2022 Marital Status\n" +
+      "\u2022 Nominee Name\n" +
+      "\u2022 Nominee DOB\n" +
+      "\u2022 Nominee Relationship with the Insured";
+      
+    parts.push("", docBlock);
+  }
+
+  if (s.paCoverSection) {
+    parts.push(
+      "",
+      "Also, we request you to share a declaration stating whether you wish to add the Personal Accident (PA) Cover for Owner-Driver to your policy:\n\n" +
+      "\u2022 If you want to add the PA Cover: Please share a copy of your Driving License (DL) along with the nominee details.\n" +
+      "\u2022 If you DO NOT want to add the PA Cover: Please share the reason for opting out. The insurer considers the following valid reasons:\n" +
+      "  1. Owner does not have a valid driving license\n" +
+      "  2. Already have a personal accidental cover\n" +
+      "  3. Owner is not driving the vehicle"
+    );
+  }
+
+  if (s.shortfallPayment) {
+    let noteText = `We wish to inform you there is a shortfall Rs. ${amt}/- in the premium amount as confirmed by the Insurer.`;
+    if (s.paCoverSection) {
+      noteText = `Note - If you do not want PA cover for owner driver, we request you to make the payment of Rs. ${amt}/- using the link below and share the screenshot after making the payment:\n\n${link}\n\nWe wish to inform you there is a shortfall Rs. ${amt}/- in the premium amount as confirmed by the Insurer.`;
+    } else {
+      noteText = `We request you to make the shortfall payment of Rs. ${amt}/- using the link below and share the screenshot after making the payment:\n\n${link}\n\nWe wish to inform you there is a shortfall Rs. ${amt}/- in the premium amount as confirmed by the Insurer.`;
+    }
+    parts.push("", noteText);
+  }
+
+  if (s.tat) {
+    parts.push(
+      "",
+      "We would like to apprise you that the turnaround time for getting the changes done in your policy will take 10 days."
+    );
+  }
+
+  if (s.charges) {
+    parts.push(
+      "",
+      "We would like to inform you that there will be charges applicable for the changes required in your policy, which we will be able to confirm post the insurer's confirmation. We shall keep you informed in our future communication."
+    );
+  }
+
+  if (s.inspection) {
+    parts.push(
+      "",
+      "An inspection of your vehicle is required as per the insurer's guidelines, which we will update you along with the charges for the same."
+    );
+  }
+
+  if (s.originalCopy) {
+    parts.push(
+      "",
+      "We request you to kindly keep the Endorsed copy along with your original policy copy for future reference."
+    );
+  }
+
+  return parts.join("\n");
+}
+
 /* ---------- BANK STATEMENT ---------- */
 function buildBankStatement() {
   const s = appState.sectionSelections;
@@ -1609,6 +1738,7 @@ function renderControls() {
     case "bank_statement": renderBankStatementControls(host); break;
     case "vas_voucher": renderVasVoucherControls(host); break;
     case "change_not_possible": renderChangeNotPossibleControls(host); break;
+    case "sbi_ot": renderSbiOtControls(host); break;
   }
 }
 
@@ -2620,6 +2750,124 @@ function renderChangeNotPossibleControls(host) {
   host.appendChild(presetGrp);
 }
 
+/* ---------- SBI OT Controls ---------- */
+function renderSbiOtControls(host) {
+  const s = appState.sectionSelections;
+
+  // Documents
+  const docGrp = createGroup("Documents & Details");
+  const docWrap = document.createElement("div");
+  docWrap.innerHTML = `
+    <div class="doc-input-row">
+      <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. rc, aadhar, pan"/>
+      <button type="button" class="doc-add-btn" id="docAddBtn">Add</button>
+    </div>
+    <div class="doc-chips" id="docChips"></div>
+  `;
+  docGrp.appendChild(docWrap);
+  host.appendChild(docGrp);
+
+  const input = document.getElementById("docInput");
+  const btn = document.getElementById("docAddBtn");
+  const chips = document.getElementById("docChips");
+  if (input && btn && chips) {
+    const doAdd = () => {
+      const val = input.value.trim();
+      if (!val) return;
+      const norm = normalizeDocument(val);
+      if (!appState.documents.includes(norm)) {
+        appState.documents.push(norm);
+      }
+      input.value = "";
+      renderDocChips(chips);
+      updatePreview();
+    };
+    btn.addEventListener("click", doAdd);
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") { e.preventDefault(); doAdd(); }
+    });
+    renderDocChips(chips);
+  }
+
+  // Toggles Group
+  const optGrp = createGroup("Toggles");
+  optGrp.appendChild(createToggleRow(
+    "PA Cover Section",
+    "Include PA cover declaration block & reasons",
+    !!s.paCoverSection,
+    val => { s.paCoverSection = val; updatePreview(); }
+  ));
+  optGrp.appendChild(createToggleRow(
+    "Shortfall Payment Section",
+    "Include shortfall amount & link statement",
+    !!s.shortfallPayment,
+    val => { s.shortfallPayment = val; renderControls(); updatePreview(); }
+  ));
+  optGrp.appendChild(createToggleRow(
+    "Include TAT Line",
+    "Include 10 days TAT statement",
+    !!s.tat,
+    val => { s.tat = val; updatePreview(); }
+  ));
+  optGrp.appendChild(createToggleRow(
+    "Endorsement Charges Info",
+    "Include charges warning line",
+    !!s.charges,
+    val => { s.charges = val; updatePreview(); }
+  ));
+  optGrp.appendChild(createToggleRow(
+    "Vehicle Inspection Info",
+    "Include vehicle inspection line",
+    !!s.inspection,
+    val => { s.inspection = val; updatePreview(); }
+  ));
+  optGrp.appendChild(createToggleRow(
+    "Original Copy Warning Line",
+    "Show keep endorsed copy recommendation",
+    !!s.originalCopy,
+    val => { s.originalCopy = val; updatePreview(); }
+  ));
+  host.appendChild(optGrp);
+
+  // Shortfall payment inputs
+  if (s.shortfallPayment) {
+    const paymentGrp = createGroup("Payment Settings");
+    
+    const amtLbl = document.createElement("label");
+    amtLbl.className = "ctrl-label";
+    amtLbl.textContent = "Shortfall Amount (Rs.)";
+    const amtInput = document.createElement("input");
+    amtInput.type = "text";
+    amtInput.className = "text-input";
+    amtInput.placeholder = "e.g. 50";
+    amtInput.value = appState.fieldValues.amount || "50";
+    amtInput.addEventListener("input", () => {
+      appState.fieldValues.amount = amtInput.value;
+      updatePreview();
+    });
+    paymentGrp.appendChild(amtLbl);
+    paymentGrp.appendChild(amtInput);
+
+    const linkLbl = document.createElement("label");
+    linkLbl.className = "ctrl-label";
+    linkLbl.style.marginTop = "10px";
+    linkLbl.textContent = "Payment Link";
+    const linkInput = document.createElement("input");
+    linkInput.type = "text";
+    linkInput.className = "text-input";
+    linkInput.placeholder = "e.g. https://pg.policybazaar.com/...";
+    linkInput.value = appState.fieldValues.link || "";
+    linkInput.addEventListener("input", () => {
+      appState.fieldValues.link = linkInput.value;
+      updatePreview();
+    });
+    paymentGrp.appendChild(linkLbl);
+    paymentGrp.appendChild(linkInput);
+
+    host.appendChild(paymentGrp);
+  }
+}
+
 /* ---------- BANK STATEMENT Controls ---------- */
 function renderBankStatementControls(host) {
   const s = appState.sectionSelections;
@@ -2760,7 +3008,8 @@ function renderPreviewHTML(text) {
     "ownership_transfer",
     "cancellation",
     "insured_person_change",
-    "as_per_rc_no_correction"
+    "as_per_rc_no_correction",
+    "sbi_ot"
   ].includes(appState.activeTemplateId);
 
   return String(text || "").split("\n").map(line => {
@@ -2825,6 +3074,14 @@ function selectTemplate(id) {
   } else if (tpl.id === "ownership_transfer") {
     appState.sectionSelections = { clarification: false };
     appState.documents = [];
+  } else if (tpl.id === "sbi_ot") {
+    appState.sectionSelections = { ...tpl.defaultSelections };
+    appState.documents = [
+      "RC (REGISTRATION CERTIFICATE)",
+      "AADHAAR CARD",
+      "PAN CARD",
+      "PROPOSAL FORM"
+    ];
   } else if (tpl.defaultSelections) {
     appState.sectionSelections = { ...tpl.defaultSelections };
     if (tpl.id === "refund_done") {
