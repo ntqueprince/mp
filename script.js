@@ -45,13 +45,13 @@ const DOC_MAP = [
   { keys: ["gst", "gst invoice", "gst bill", "gst i"], out: "GST INVOICE" },
   { keys: ["gst certificate", "gst cert", "gst copy", "insured gst", "gst c"], out: "GST CERTIFICATE IN THE NAME OF INSURED" },
   { keys: ["tp", "third party", "third party policy"], out: "THIRD PARTY POLICY" },
-  { keys: ["saod", "stand alone own damage", "stand alone own damage policy"], out: "STAND ALONE OWN DAMAGE (SAOD) POLICY" },
+  { keys: ["saod", "od", "stand alone own damage", "stand alone own damage policy", "own damage policy"], out: "STAND ALONE OWN DAMAGE (SAOD) POLICY" },
   { keys: ["compre", "comprehensive", "comprehensive policy"], out: "COMPREHENSIVE POLICY" },
   { keys: ["bund", "bundle", "bundle policy"], out: "BUNDLE POLICY" },
   { keys: ["idv", "insured declared value"], out: "IDV (INSURED DECLARED VALUE)" },
   { keys: ["address", "address proof", "addr", "address proof copy"], out: "ADDRESS PROOF REFLECTING THE EXACT SAME ADDRESS TO BE UPDATED" },
   { keys: ["neft", "bank details", "bank detail", "cancelled cheque", "cheque", "passbook", "bank passbook", "neft details", "cancel"], out: "A CANCELLED CHEQUE OR BANK PASSBOOK OF THE INSURED PERSON AS PER POLICY" },
-  { keys: ["zd", "zero dep", "zero depreciation"], out: "ZERO DEPRECIATION COVER" }
+  { keys: ["zd", "zero dep", "zero depreciation"], out: "ZERO DEPRECIATION" }
 ];
 
 function normalizeDocument(raw) {
@@ -154,6 +154,40 @@ function addDays(base, days) {
    TEMPLATE DEFINITIONS
    ========================================================= */
 const mailTemplates = [
+  /* ---------- BLANK MAIL ---------- */
+  {
+    id: "blank_mail",
+    header: "BLANK MAIL",
+    description: "Compose custom mail with default greeting and reference",
+    keywords: ["blank", "custom", "manual", "write", "empty", "compose", "blank mail"],
+    type: "dynamic"
+  },
+  /* ---------- DOCS ONLY ---------- */
+  {
+    id: "docs_only",
+    header: "DOCS ONLY",
+    description: "Request documents only with optional custom details",
+    keywords: ["docs only", "document only", "pending documents", "docs", "request docs"],
+    type: "hybrid",
+    defaultSelections: {
+      greeting: true,
+      reference: true,
+      docRequestHeader: true,
+      detailsSection: false
+    }
+  },
+  /* ---------- GATEPASS / NATIONAL CANCELLATION ---------- */
+  {
+    id: "gatepass_national_cancellation",
+    header: "GATEPASS / NATIONAL CANCELLATION",
+    description: "New vehicle cancellation deductions & gate pass rules builder",
+    keywords: ["gatepass", "national cancellation", "gate pass", "deduction", "old policy date", "national", "cancellation", "alternative policy"],
+    type: "selectable",
+    defaultSelections: {
+      dateType: "same",
+      gatepassStatus: "not_provided"
+    }
+  },
   /* ---------- DOCS REQUIRED ---------- */
   {
     id: "docs_required",
@@ -832,6 +866,9 @@ function buildPreview() {
   if (tpl.type === "fixed") return tpl.body;
 
   switch (tpl.id) {
+    case "blank_mail":      return buildBlankMail();
+    case "docs_only":       return buildDocsOnly();
+    case "gatepass_national_cancellation": return buildGatepassNationalCancellation();
     case "docs_required":   return buildDocsRequired();
     case "rf":              return buildRF();
     case "sf_payment":      return buildSF();
@@ -857,6 +894,105 @@ function buildPreview() {
 
 function getActiveTemplate() {
   return mailTemplates.find(t => t.id === appState.activeTemplateId) || null;
+}
+
+/* ---------- BLANK MAIL ---------- */
+function buildBlankMail() {
+  const manual = (appState.manualText || "").trim();
+  const parts = [
+    "Greetings from PolicyBazaar.com!",
+    "",
+    "This is with reference to your request."
+  ];
+
+  if (manual) {
+    parts.push("", expandAbbreviations(manual));
+  }
+
+  return parts.join("\n");
+}
+
+/* ---------- GATEPASS / NATIONAL CANCELLATION ---------- */
+function buildGatepassNationalCancellation() {
+  const s = appState.sectionSelections;
+  const dateType = s.dateType || "same";
+  const gpStatus = s.gatepassStatus || "not_provided";
+
+  const parts = [
+    "Dear Customer,",
+    "Greetings from Policybazaar.com!",
+    "",
+    "We appreciate your patience. This is in reference to your request regarding the cancellation of your Car Insurance."
+  ];
+
+  if (dateType === "same") {
+    parts.push(
+      "As per the insurer guidelines, since your alternate policy starts on the same date as your old policy, there will be a deduction of only \u20B9118 administrative fee from your refund.",
+      "Please confirm to proceed with the cancellation."
+    );
+  } else {
+    // Different Date
+    if (gpStatus === "provided_valid") {
+      parts.push(
+        "As per the latest update from the insurer, since you have provided a valid gate pass proving the vehicle was delivered on the new policy date, only a \u20B9118 administrative fee will be deducted.",
+        "Please confirm to proceed with the cancellation."
+      );
+    } else if (gpStatus === "ask_gp") {
+      parts.push(
+        "Since your alternate policy start date differs from the old policy date, the insurer will assume the vehicle was delivered under the old policy, which will result in the following deductions:",
+        "\u2022 \u20B9118 administrative fee\n\u2022 1 year of third-party premium\n\u2022 Approximately 20% of the own damage premium",
+        "To avoid these deductions, please share a copy of the Gate Pass (or delivery receipt) reflecting that the vehicle was delivered on the new policy date. If the gate pass reflects the old date or is not provided, the above deductions will apply.",
+        "Please share the gate pass or confirm if we should proceed with the deductions."
+      );
+    } else {
+      // not_provided or old date gatepass
+      parts.push(
+        "As per the latest update from the insurer, since the alternate policy start date differs and the gate pass reflects the old policy date (or has not been provided), it is considered that the vehicle was delivered under the coverage of the old policy. Therefore, the following deductions will apply:",
+        "\u2022 \u20B9118 administrative fee\n\u2022 1 year of third-party premium\n\u2022 Approximately 20% of the own damage premium",
+        "Please confirm to proceed with this adjustment."
+      );
+    }
+  }
+
+  return parts.join("\n\n");
+}
+
+/* ---------- DOCS ONLY ---------- */
+function buildDocsOnly() {
+  const s = appState.sectionSelections;
+  const parts = [];
+
+  if (s.greeting !== false) {
+    parts.push("Greetings from PolicyBazaar.com!");
+  }
+  if (s.reference !== false) {
+    parts.push("This is with reference to your request.");
+  }
+
+  const formattedDocs = getFormattedDocuments();
+  if (s.docRequestHeader !== false) {
+    if (formattedDocs.length > 0) {
+      let docBlock = "We kindly request you to share the following document(s) to proceed further with your request:\n";
+      for (const d of formattedDocs) docBlock += "\n\u2022 " + d;
+      parts.push(docBlock);
+    } else {
+      parts.push("We kindly request you to share the required documents to proceed further with your request.");
+    }
+  } else {
+    if (formattedDocs.length > 0) {
+      let docBlock = "";
+      for (let i = 0; i < formattedDocs.length; i++) {
+        docBlock += (i > 0 ? "\n" : "") + "\u2022 " + formattedDocs[i];
+      }
+      parts.push(docBlock);
+    }
+  }
+
+  if (s.detailsSection && (appState.manualText || "").trim()) {
+    parts.push("Please also share/provide the following details:\n\n" + expandAbbreviations(appState.manualText.trim()));
+  }
+
+  return parts.join("\n\n");
 }
 
 /* ---------- DOCS REQUIRED ---------- */
@@ -928,7 +1064,8 @@ function buildRF() {
       parts.push(`Request you to kindly allow us ${days} ${unit} to share the status update.`);
     } else {
       const target = addDays(new Date(), appState.updateDateOffset);
-      parts.push(`Request you to kindly allow us time till ${formatDateDDMonthYYYY(target)} to share the status update.`);
+      const days = appState.updateDateOffset;
+      parts.push(`Request you to kindly allow us ${days} days (time till ${formatDateDDMonthYYYY(target)}) to share the status update.`);
     }
   }
 
@@ -1149,10 +1286,11 @@ function buildOwnershipTransfer() {
 
   return parts.join("\n\n");
 }
+
 /* ---------- 2W VIDEO INSPECTION ---------- */
 function buildTwoWVideoInspection() {
   const s = appState.sectionSelections;
-  const reason = appState.fieldValues.twoWReinspectionReason || "";
+  const reason = expandAbbreviations(appState.fieldValues.twoWReinspectionReason || "");
 
   const parts = [
     "Greetings from PolicyBazaar.com!",
@@ -1191,7 +1329,7 @@ function buildTwoWVideoInspection() {
 /* ---------- 4W VIDEO INSPECTION ---------- */
 function buildVideoInspection() {
   const s = appState.sectionSelections;
-  const reason = appState.fieldValues.reinspectionReason || "";
+  const reason = expandAbbreviations(appState.fieldValues.reinspectionReason || "");
 
   const parts = [
     "Greetings from PolicyBazaar.com!",
@@ -1324,14 +1462,26 @@ function buildRenewal() {
 function buildTat24Hr() {
   const mode = appState.fieldValues.tatMode || "24hr";
   const customDays = parseInt(appState.fieldValues.tatCustomDays, 10);
+  const customType = appState.fieldValues.tatCustomType || "working";
+  const showExact = !!appState.fieldValues.tatCustomShowExactDate;
   const s = appState.sectionSelections;
   let tatText = "24 hours";
 
   if (mode === "2wd") tatText = "2 working days";
   if (mode === "5wd") tatText = "5 working days";
+  if (mode === "10wd") tatText = "10 working days";
   if (mode === "custom") {
     const days = Number.isFinite(customDays) && customDays > 0 ? customDays : 1;
-    tatText = `${days} ${days === 1 ? "working day" : "working days"}`;
+    if (customType === "normal") {
+      if (showExact) {
+        const target = addDays(new Date(), days);
+        tatText = `${days} ${days === 1 ? "day" : "days"} (time till ${formatDateDDMonthYYYY(target)})`;
+      } else {
+        tatText = `${days} ${days === 1 ? "day" : "days"}`;
+      }
+    } else {
+      tatText = `${days} ${days === 1 ? "working day" : "working days"}`;
+    }
   }
 
   const parts = [
@@ -1358,26 +1508,30 @@ function buildTat24Hr() {
   return parts.join("\n");
 }
 
+function expandAbbreviations(str) {
+  if (!str) return "";
+  let res = str;
+  res = res.replace(/\bzd\b/gi, "zero depreciation");
+  res = res.replace(/\bsaod\b/gi, "stand alone own damage policy");
+  res = res.replace(/\bod\b/gi, "stand alone own damage policy");
+  res = res.replace(/\bot\b/gi, "ownership transfer");
+  res = res.replace(/\bcpa\b/gi, "compulsory personal accident (CPA) cover");
+  res = res.replace(/\btp\b/gi, "third party");
+  res = res.replace(/\bncb\b/gi, "no claim bonus (NCB)");
+  res = res.replace(/\bpyp\b/gi, "previous year policy (PYP)");
+  res = res.replace(/\brc\b/gi, "registration certificate (RC)");
+  return res;
+}
+
 /* ---------- REQUEST CLOSURE ---------- */
 function polishConcern(raw) {
   let clean = raw.trim().toLowerCase();
   if (!clean) return "";
 
   // Expand abbreviations
-  clean = clean.replace(/\bot\b/gi, "ownership transfer");
-  clean = clean.replace(/\btp\b/gi, "third party");
-  clean = clean.replace(/\bcpa\b/gi, "compulsory personal accident (CPA) cover");
-  clean = clean.replace(/\bncb\b/gi, "no claim bonus (NCB)");
-  clean = clean.replace(/\bpyp\b/gi, "previous year policy (PYP)");
-  clean = clean.replace(/\brc\b/gi, "registration certificate (RC)");
+  clean = expandAbbreviations(clean);
 
-  let expandedRaw = raw;
-  expandedRaw = expandedRaw.replace(/\bot\b/gi, "ownership transfer");
-  expandedRaw = expandedRaw.replace(/\btp\b/gi, "third party");
-  expandedRaw = expandedRaw.replace(/\bcpa\b/gi, "compulsory personal accident (CPA) cover");
-  expandedRaw = expandedRaw.replace(/\bncb\b/gi, "no claim bonus (NCB)");
-  expandedRaw = expandedRaw.replace(/\bpyp\b/gi, "previous year policy (PYP)");
-  expandedRaw = expandedRaw.replace(/\brc\b/gi, "registration certificate (RC)");
+  let expandedRaw = expandAbbreviations(raw);
 
   const words = clean.split(/\s+/);
   if (words.length > 8 || raw.length > 50) {
@@ -1509,6 +1663,7 @@ function buildChangeNotPossible() {
   const reason = (appState.fieldValues.notPossibleReason || "").trim();
 
   // Automatically expand abbreviations
+  change = expandAbbreviations(change);
   change = change.replace(/\bidv\b/gi, "IDV (Insured Declared Value)");
   change = change.replace(/\bpoi\b/gi, "POI (Period of Insurance)");
 
@@ -1531,10 +1686,10 @@ function buildChangeNotPossible() {
   }
 
   if (reason) {
-    let reasonText = reason;
-    const lower = reason.toLowerCase();
+    let reasonText = expandAbbreviations(reason);
+    const lower = reasonText.toLowerCase();
     if (lower.startsWith("since") || lower.startsWith("because") || lower.startsWith("as ")) {
-      reasonText = "Please note that " + reason;
+      reasonText = "Please note that " + reasonText;
     }
     // Capitalize first character
     reasonText = reasonText.charAt(0).toUpperCase() + reasonText.slice(1);
@@ -1720,6 +1875,9 @@ function renderControls() {
   }
 
   switch (tpl.id) {
+    case "blank_mail":      renderBlankMailControls(host); break;
+    case "docs_only":       renderDocsOnlyControls(host); break;
+    case "gatepass_national_cancellation": renderGatepassNationalCancellationControls(host); break;
     case "docs_required":   renderDocsRequiredControls(host); break;
     case "rf":              renderRFControls(host); break;
     case "sf_payment":      renderSFControls(host); break;
@@ -1739,6 +1897,199 @@ function renderControls() {
     case "vas_voucher": renderVasVoucherControls(host); break;
     case "change_not_possible": renderChangeNotPossibleControls(host); break;
     case "sbi_ot": renderSbiOtControls(host); break;
+  }
+}
+
+function renderBlankMailControls(host) {
+  const grp = createGroup("Compose Mail");
+  
+  const lbl = document.createElement("label");
+  lbl.className = "ctrl-label";
+  lbl.textContent = "Your Custom Message";
+  
+  const ta = document.createElement("textarea");
+  ta.className = "text-area";
+  ta.placeholder = "Type your custom message here...";
+  ta.value = appState.manualText;
+  ta.rows = 6;
+  ta.addEventListener("input", () => {
+    appState.manualText = ta.value;
+    updatePreview();
+  });
+  
+  grp.appendChild(lbl);
+  grp.appendChild(ta);
+  host.appendChild(grp);
+}
+
+function renderGatepassNationalCancellationControls(host) {
+  const s = appState.sectionSelections;
+
+  // 1. Alternate Policy Date Type Selector
+  const dateGrp = createGroup("Alternate Policy Date");
+  const dateWrap = document.createElement("div");
+  dateWrap.className = "chip-select";
+  dateWrap.style.marginTop = "6px";
+
+  const currentType = s.dateType || "same";
+
+  const optSame = document.createElement("button");
+  optSame.type = "button";
+  optSame.className = "chip-opt" + (currentType === "same" ? " active" : "");
+  optSame.textContent = "Same Date";
+  optSame.addEventListener("click", () => {
+    s.dateType = "same";
+    renderControls();
+    updatePreview();
+  });
+
+  const optDiff = document.createElement("button");
+  optDiff.type = "button";
+  optDiff.className = "chip-opt" + (currentType === "diff" ? " active" : "");
+  optDiff.textContent = "Different Date";
+  optDiff.addEventListener("click", () => {
+    s.dateType = "diff";
+    renderControls();
+    updatePreview();
+  });
+
+  dateWrap.appendChild(optSame);
+  dateWrap.appendChild(optDiff);
+  dateGrp.appendChild(dateWrap);
+  host.appendChild(dateGrp);
+
+  // 2. Gate Pass Options (only if different date)
+  if (currentType === "diff") {
+    const gpGrp = createGroup("Gate Pass Status");
+    const gpWrap = document.createElement("div");
+    gpWrap.className = "chip-select";
+    gpWrap.style.marginTop = "6px";
+
+    const currentGp = s.gatepassStatus || "not_provided";
+
+    const optNotProvided = document.createElement("button");
+    optNotProvided.type = "button";
+    optNotProvided.className = "chip-opt" + (currentGp === "not_provided" ? " active" : "");
+    optNotProvided.textContent = "Old Date / Not Provided";
+    optNotProvided.addEventListener("click", () => {
+      s.gatepassStatus = "not_provided";
+      renderControls();
+      updatePreview();
+    });
+
+    const optAsk = document.createElement("button");
+    optAsk.type = "button";
+    optAsk.className = "chip-opt" + (currentGp === "ask_gp" ? " active" : "");
+    optAsk.textContent = "Ask for Gate Pass";
+    optAsk.addEventListener("click", () => {
+      s.gatepassStatus = "ask_gp";
+      renderControls();
+      updatePreview();
+    });
+
+    const optValid = document.createElement("button");
+    optValid.type = "button";
+    optValid.className = "chip-opt" + (currentGp === "provided_valid" ? " active" : "");
+    optValid.textContent = "Valid Date Provided";
+    optValid.addEventListener("click", () => {
+      s.gatepassStatus = "provided_valid";
+      renderControls();
+      updatePreview();
+    });
+
+    gpWrap.appendChild(optNotProvided);
+    gpWrap.appendChild(optAsk);
+    gpWrap.appendChild(optValid);
+    gpGrp.appendChild(gpWrap);
+    host.appendChild(gpGrp);
+  }
+}
+
+function renderDocsOnlyControls(host) {
+  const s = appState.sectionSelections;
+
+  // Documents Group
+  const docGrp = createGroup("Documents");
+  const docWrap = document.createElement("div");
+  docWrap.style.marginTop = "8px";
+  docWrap.innerHTML = `
+    <div class="doc-input-row">
+      <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. rc, pyp, saod"/>
+      <button type="button" class="doc-add-btn" id="docAddBtn">Add</button>
+    </div>
+    <div class="doc-chips" id="docChips"></div>
+  `;
+  docGrp.appendChild(docWrap);
+  host.appendChild(docGrp);
+
+  const input = document.getElementById("docInput");
+  const btn = document.getElementById("docAddBtn");
+  const chips = document.getElementById("docChips");
+  if (input && btn && chips) {
+    const doAdd = () => {
+      const val = input.value.trim();
+      if (!val) return;
+      const norm = normalizeDocument(val);
+      if (!appState.documents.includes(norm)) {
+        appState.documents.push(norm);
+      }
+      input.value = "";
+      renderDocChips(chips);
+      updatePreview();
+    };
+    btn.addEventListener("click", doAdd);
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") { e.preventDefault(); doAdd(); }
+    });
+    renderDocChips(chips);
+  }
+
+  // Options Group (Toggles)
+  const optGrp = createGroup("Options");
+  optGrp.appendChild(createToggleRow(
+    "Greeting",
+    "Greetings from PolicyBazaar.com!",
+    s.greeting !== false,
+    val => { s.greeting = val; updatePreview(); }
+  ));
+  optGrp.appendChild(createToggleRow(
+    "Reference",
+    "This is with reference to your request.",
+    s.reference !== false,
+    val => { s.reference = val; updatePreview(); }
+  ));
+  optGrp.appendChild(createToggleRow(
+    "Document Request Line",
+    "We kindly request you to share...",
+    s.docRequestHeader !== false,
+    val => { s.docRequestHeader = val; updatePreview(); }
+  ));
+  optGrp.appendChild(createToggleRow(
+    "Include Custom Details",
+    "Request additional details or information",
+    !!s.detailsSection,
+    val => {
+      s.detailsSection = val;
+      renderControls();
+      updatePreview();
+    }
+  ));
+  host.appendChild(optGrp);
+
+  // If details toggle is active, show the details textarea
+  if (s.detailsSection) {
+    const detailsGrp = createGroup("Custom Details");
+    const ta = document.createElement("textarea");
+    ta.className = "text-area";
+    ta.placeholder = "e.g. written consent with policy number...";
+    ta.value = appState.manualText || "";
+    ta.rows = 4;
+    ta.addEventListener("input", () => {
+      appState.manualText = ta.value;
+      updatePreview();
+    });
+    detailsGrp.appendChild(ta);
+    host.appendChild(detailsGrp);
   }
 }
 
@@ -2361,6 +2712,7 @@ function renderTat24HrControls(host) {
     { value: "24hr", label: "24 hours" },
     { value: "2wd", label: "2 WD" },
     { value: "5wd", label: "5 WD" },
+    { value: "10wd", label: "10 WD" },
     { value: "custom", label: "Custom WD" }
   ].forEach(opt => {
     const c = document.createElement("button");
@@ -2380,10 +2732,46 @@ function renderTat24HrControls(host) {
   grp.appendChild(chipSel);
 
   if (mode === "custom") {
+    const typeLbl = document.createElement("label");
+    typeLbl.className = "ctrl-label";
+    typeLbl.style.marginTop = "10px";
+    typeLbl.textContent = "Day Type";
+    
+    const typeWrap = document.createElement("div");
+    typeWrap.className = "chip-select";
+    typeWrap.style.marginTop = "6px";
+    
+    const customType = appState.fieldValues.tatCustomType || "working";
+    
+    const optWorking = document.createElement("button");
+    optWorking.type = "button";
+    optWorking.className = "chip-opt" + (customType === "working" ? " active" : "");
+    optWorking.textContent = "Working Days";
+    optWorking.addEventListener("click", () => {
+      appState.fieldValues.tatCustomType = "working";
+      renderControls();
+      updatePreview();
+    });
+    
+    const optNormal = document.createElement("button");
+    optNormal.type = "button";
+    optNormal.className = "chip-opt" + (customType === "normal" ? " active" : "");
+    optNormal.textContent = "Normal Days";
+    optNormal.addEventListener("click", () => {
+      appState.fieldValues.tatCustomType = "normal";
+      renderControls();
+      updatePreview();
+    });
+    
+    typeWrap.appendChild(optWorking);
+    typeWrap.appendChild(optNormal);
+    grp.appendChild(typeLbl);
+    grp.appendChild(typeWrap);
+
     const dayLbl = document.createElement("label");
     dayLbl.className = "ctrl-label";
     dayLbl.style.marginTop = "10px";
-    dayLbl.textContent = "Custom Working Days";
+    dayLbl.textContent = customType === "normal" ? "Custom Normal Days" : "Custom Working Days";
     const dayInput = document.createElement("input");
     dayInput.type = "number";
     dayInput.min = "1";
@@ -2397,6 +2785,20 @@ function renderTat24HrControls(host) {
     });
     grp.appendChild(dayLbl);
     grp.appendChild(dayInput);
+
+    if (customType === "normal") {
+      const toggleRow = createToggleRow(
+        "Show as Exact Date",
+        "Convert normal days count to exact calendar date",
+        !!appState.fieldValues.tatCustomShowExactDate,
+        val => {
+          appState.fieldValues.tatCustomShowExactDate = val;
+          updatePreview();
+        }
+      );
+      toggleRow.style.marginTop = "10px";
+      grp.appendChild(toggleRow);
+    }
   }
 
   host.appendChild(grp);
@@ -3003,6 +3405,7 @@ function getPreviewBadges(line) {
 
 function renderPreviewHTML(text) {
   const allowDelete = [
+    "docs_only",
     "docs_required",
     "rf",
     "ownership_transfer",
