@@ -421,7 +421,7 @@ const mailTemplates = [
       "",
       "This is with the reference to your request.",
       "",
-      "We request you to kindly share the suitable timing to connect with you on your pending concern."
+      "We request you to kindly share the suitable timing to connect with you on your pending concern. Alternatively, you can also reach us at 1800-258-5970."
     ].join("\n")
   },
   /* ---------- 8. COMPLETE MISMATCH ---------- */
@@ -1399,7 +1399,7 @@ function buildCancellation() {
   );
 
   if (appState.sectionSelections.irdaiNote) {
-    parts.push("Note: As per insurer norms, cancellation of a third-party policy should be processed on the basis of a comprehensive/package policy for the same vehicle. If cancellation is requested on the basis of another third-party policy, only the policy with the later start date will be cancelled.");
+    parts.push("Note: Alternate should be comprehensive, incase of alternate TP, the later issued policy will be cancelled");
   }
 
   return parts.join("\n\n");
@@ -1520,6 +1520,7 @@ function expandAbbreviations(str) {
   res = res.replace(/\bncb\b/gi, "no claim bonus (NCB)");
   res = res.replace(/\bpyp\b/gi, "previous year policy (PYP)");
   res = res.replace(/\brc\b/gi, "registration certificate (RC)");
+  res = res.replace(/\bpoi\b/gi, "Period of Insurance (POI)");
   return res;
 }
 
@@ -2014,7 +2015,7 @@ function renderDocsOnlyControls(host) {
   docWrap.style.marginTop = "8px";
   docWrap.innerHTML = `
     <div class="doc-input-row">
-      <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. rc, pyp, saod"/>
+      <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. rc, pyp, saod, poi"/>
       <button type="button" class="doc-add-btn" id="docAddBtn">Add</button>
     </div>
     <div class="doc-chips" id="docChips"></div>
