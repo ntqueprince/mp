@@ -21,6 +21,8 @@ const appState = {
   manualPreviewOverride: null, // if user edits preview directly
   showUpdateDateOptions: false, // RF: reveal exact-date/working-day controls
   showTatOptions: false,        // RF: reveal TAT day controls
+  extraNoteActive: false,       // toggle for appending extra note at bottom of any mail
+  extraNoteText: "",            // text content for extra note
   miniPos: null,
   isFloating: false,
   isPiPActive: false
@@ -46,12 +48,13 @@ const DOC_MAP = [
   { keys: ["gst certificate", "gst cert", "gst copy", "insured gst", "gst c"], out: "GST CERTIFICATE IN THE NAME OF INSURED" },
   { keys: ["tp", "third party", "third party policy"], out: "THIRD PARTY POLICY" },
   { keys: ["saod", "od", "stand alone own damage", "stand alone own damage policy", "own damage policy"], out: "STAND ALONE OWN DAMAGE (SAOD) POLICY" },
-  { keys: ["compre", "comprehensive", "comprehensive policy"], out: "COMPREHENSIVE POLICY" },
+  { keys: ["comp", "compre", "comprehensive", "comprehensive policy"], out: "COMPREHENSIVE POLICY" },
   { keys: ["bund", "bundle", "bundle policy"], out: "BUNDLE POLICY" },
   { keys: ["idv", "insured declared value"], out: "IDV (INSURED DECLARED VALUE)" },
   { keys: ["address", "address proof", "addr", "address proof copy"], out: "ADDRESS PROOF REFLECTING THE EXACT SAME ADDRESS TO BE UPDATED" },
   { keys: ["neft", "bank details", "bank detail", "cancelled cheque", "cheque", "passbook", "bank passbook", "neft details", "cancel"], out: "A CANCELLED CHEQUE OR BANK PASSBOOK OF THE INSURED PERSON AS PER POLICY" },
-  { keys: ["zd", "zero dep", "zero depreciation"], out: "ZERO DEPRECIATION" }
+  { keys: ["zd", "zero dep", "zero depreciation"], out: "ZERO DEPRECIATION" },
+  { keys: ["alt", "alt policy", "alternate", "alternate policy", "alternative policy"], out: "ALTERNATE POLICY FOR SAME VEHICLE" }
 ];
 
 function normalizeDocument(raw) {
@@ -339,7 +342,7 @@ const mailTemplates = [
     description: "Post-issuance policy cancellation process",
     keywords: ["cancellation", "cancel", "post issuance cancel", "post issuance cancellation", "post issunce cancel", "post issunce cancellation", "118", "alt policy", "alternate policy", "alternative policy", "alternative", "neft", "refund details", "bank details", "written consent", "cancelled cheque", "bank passbook", "package policy"],
     type: "selectable",
-    defaultSelections: { irdaiNote: false, consent: false, alternate: true, neft: false }
+    defaultSelections: { irdaiNote: false, consent: false, alternate: true, alternateMayBe: false, neft: false }
   },
 
   /* ---------- 7. CHARGEBACK REVERSAL ---------- */
@@ -587,22 +590,16 @@ const mailTemplates = [
   {
     id: "tat_already_shared",
     header: "TAT ALREADY SHARED",
-    description: "Ask customer to wait for the TAT shared in earlier communication",
-    keywords: ["tat already shared", "already shared", "earlier communication", "wait tat", "ongoing concern", "already raised", "request processing", "follow up", "followup", "tat wait"],
-    type: "fixed",
-    body: [
-      "Greetings from PolicyBazaar.com!",
-      "",
-      "This is with reference to your recent email regarding your ongoing concern.",
-      "",
-      "We would like to inform you that your request has already been raised and is currently being processed with the insurance company.",
-      "",
-      "As the required update and applicable timelines have already been shared with you in our earlier communication, we kindly request you to wait until the completion of the mentioned Turnaround Time (TAT).",
-      "",
-      "Please be assured that we are tracking your request closely to ensure a resolution at the earliest.",
-      "",
-      "We sincerely appreciate your patience and understanding."
-    ].join("\n")
+    description: "Status update mail for received requirements or expedited follow-up",
+    keywords: ["tat already shared", "already shared", "earlier communication", "wait tat", "ongoing concern", "already raised", "request processing", "follow up", "followup", "tat wait", "docs received", "expedited", "priority"],
+    type: "selectable",
+    defaultSelections: {
+      mailMode: "docs_received",
+      docsReceived: true,
+      expedited: false,
+      waitTat: true,
+      trackingAssurance: false
+    }
   },
   /* ---------- CHANGES NOT POSSIBLE ---------- */
   {
@@ -760,6 +757,37 @@ const mailTemplates = [
       inspection: true,
       originalCopy: true
     }
+  },
+  /* ---------- ZD VIDEO ---------- */
+  {
+    id: "zd_video",
+    header: "ZD VIDEO",
+    description: "Video inspection approved for validation",
+    keywords: ["zd video", "zd video inspection", "zero dep video", "video approved", "inspection approved", "zd approved", "zero depreciation video"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your recent request.",
+      "",
+      "We are pleased to inform you that your video inspection has been successfully approved for validation."
+    ].join("\n")
+  },
+  /* ---------- M PARIVAHAN MAIL ---------- */
+  {
+    id: "m_parivahan_mail",
+    header: "M PARIVAHAN MAIL",
+    description: "M-Parivahan / VAHAN policy update request builder with documents & TAT options",
+    keywords: ["m parivahan mail", "mparivahan mail", "parivahan mail", "m parivahan", "vahan mail", "mparivahan", "parivahan update", "vahan update", "parivahan status", "tp parivahan"],
+    type: "hybrid",
+    defaultSelections: {
+      greeting: true,
+      reference: true,
+      forwarded: true,
+      documents: false,
+      tat: true,
+      showExactDate: true
+    }
   }
 ];
 
@@ -863,33 +891,52 @@ function buildPreview() {
   const tpl = getActiveTemplate();
   if (!tpl) return "";
 
-  if (tpl.type === "fixed") return tpl.body;
-
-  switch (tpl.id) {
-    case "blank_mail":      return buildBlankMail();
-    case "docs_only":       return buildDocsOnly();
-    case "gatepass_national_cancellation": return buildGatepassNationalCancellation();
-    case "docs_required":   return buildDocsRequired();
-    case "rf":              return buildRF();
-    case "sf_payment":      return buildSF();
-    case "refund_done":     return buildRefund();
-    case "cancellation":    return buildCancellation();
-    case "insured_person_change": return buildInsuredPersonChange();
-    case "vahan_updated":   return buildVahanUpdated();
-    case "renewal_contact": return buildRenewal();
-    case "tat_24hr":        return buildTat24Hr();
-    case "ownership_transfer": return buildOwnershipTransfer();
-    case "video_inspection": return buildVideoInspection();
-    case "two_w_video_inspection": return buildTwoWVideoInspection();
-    case "as_per_rc_no_correction": return buildAsPerRcNoCorrection();
-    case "request_closure": return buildClosure();
-    case "complete_mismatch": return buildCompleteMismatch();
-    case "bank_statement": return buildBankStatement();
-    case "vas_voucher": return buildVasVoucher();
-    case "change_not_possible": return buildChangeNotPossible();
-    case "sbi_ot": return buildSbiOt();
-    default: return tpl.body || "";
+  let baseText = "";
+  if (tpl.type === "fixed") {
+    baseText = tpl.body;
+  } else {
+    switch (tpl.id) {
+      case "blank_mail":      baseText = buildBlankMail(); break;
+      case "docs_only":       baseText = buildDocsOnly(); break;
+      case "gatepass_national_cancellation": baseText = buildGatepassNationalCancellation(); break;
+      case "docs_required":   baseText = buildDocsRequired(); break;
+      case "rf":              baseText = buildRF(); break;
+      case "sf_payment":      baseText = buildSF(); break;
+      case "refund_done":     baseText = buildRefund(); break;
+      case "cancellation":    baseText = buildCancellation(); break;
+      case "insured_person_change": baseText = buildInsuredPersonChange(); break;
+      case "vahan_updated":   baseText = buildVahanUpdated(); break;
+      case "renewal_contact": baseText = buildRenewal(); break;
+      case "tat_24hr":        baseText = buildTat24Hr(); break;
+      case "tat_already_shared": baseText = buildTatAlreadyShared(); break;
+      case "ownership_transfer": baseText = buildOwnershipTransfer(); break;
+      case "video_inspection": baseText = buildVideoInspection(); break;
+      case "two_w_video_inspection": baseText = buildTwoWVideoInspection(); break;
+      case "as_per_rc_no_correction": baseText = buildAsPerRcNoCorrection(); break;
+      case "request_closure": baseText = buildClosure(); break;
+      case "complete_mismatch": baseText = buildCompleteMismatch(); break;
+      case "m_parivahan_mail": baseText = buildMParivahanMail(); break;
+      case "bank_statement": baseText = buildBankStatement(); break;
+      case "vas_voucher": baseText = buildVasVoucher(); break;
+      case "change_not_possible": baseText = buildChangeNotPossible(); break;
+      case "sbi_ot": baseText = buildSbiOt(); break;
+      default: baseText = tpl.body || ""; break;
+    }
   }
+
+  if (appState.extraNoteActive && (appState.extraNoteText || "").trim()) {
+    let extraText = expandAbbreviations(appState.extraNoteText.trim());
+    if (!/^note[\s:-]/i.test(extraText)) {
+      extraText = "Note: " + extraText;
+    }
+    if (baseText) {
+      baseText += "\n\n" + extraText;
+    } else {
+      baseText = extraText;
+    }
+  }
+
+  return baseText;
 }
 
 function getActiveTemplate() {
@@ -1301,6 +1348,10 @@ function buildTwoWVideoInspection() {
     parts.push(`Note: We request you to upload the video again because ${reason.trim()}.`);
   }
 
+  if (s.rcNote) {
+    parts.push("Note: Please ensure to clearly capture the RC (Registration Certificate) in the video. Alternatively, you may send a copy of the RC separately by replying to this email or on WhatsApp at 8506013131 from your registered mobile number.");
+  }
+
   parts.push(
     "Request you to follow the below guidelines to do a self video inspection of your vehicle.",
     "For Android:\nhttps://play.google.com/store/apps/details?id=com.policybazaar&hl=en-GB&pli=1&pid=mobile_hamburger&c=mobile_hamburger_dropdown",
@@ -1342,6 +1393,10 @@ function buildVideoInspection() {
 
   parts.push("Note: Please ensure that the CNG cylinder is also clearly captured if the vehicle has an externally fitted CNG kit.");
 
+  if (s.rcNote) {
+    parts.push("Note: Please ensure to clearly capture the RC (Registration Certificate) in the video. Alternatively, you may send a copy of the RC separately by replying to this email or on WhatsApp at 8506013131 from your registered mobile number.");
+  }
+
   parts.push(
     "Inspection of your vehicle is mandatory for us to proceed with the requested changes in your policy.",
     "Please follow the below guidelines to upload a self-video inspection of your vehicle:",
@@ -1378,19 +1433,35 @@ function buildCancellation() {
     "This is in reference to your cancellation request."
   );
 
-  const requests = [];
+  const items = [];
   if (appState.sectionSelections.consent) {
-    requests.push("1. Written consent for cancellation with the policy number (I want to cancel this policy no: ______________)");
-  }
-  if (appState.sectionSelections.alternate) {
-    requests.push(`${requests.length + 1}. Alternate policy of the same vehicle`);
-  }
-  if (appState.sectionSelections.neft) {
-    requests.push(`${requests.length + 1}. A cancelled cheque or bank passbook of the insured person as per policy`);
+    items.push("Written consent for cancellation with the policy number (I want to cancel this policy no: ______________)");
   }
 
-  if (requests.length > 0) {
-    parts.push("However, we kindly request you to provide the following:\n\n" + requests.join("\n"));
+  const isMayBe = appState.sectionSelections.alternateMayBe;
+  const includeBundle = appState.sectionSelections.includeBundle;
+  const policyName = includeBundle 
+    ? "Alternate / Bundle policy of the same vehicle"
+    : "Alternate policy of the same vehicle";
+  const alternateLine = isMayBe 
+    ? `${policyName} (if any)`
+    : policyName;
+
+  if (appState.sectionSelections.alternate && !isMayBe) {
+    items.push(alternateLine);
+  }
+
+  if (appState.sectionSelections.neft) {
+    items.push("A cancelled cheque or bank passbook of the insured person as per policy");
+  }
+
+  if (appState.sectionSelections.alternate && isMayBe) {
+    items.push(alternateLine);
+  }
+
+  if (items.length > 0) {
+    const formatted = items.map((text, idx) => `${idx + 1}. ${text}`);
+    parts.push("However, we kindly request you to provide the following:\n\n" + formatted.join("\n"));
   }
 
   parts.push(
@@ -1521,6 +1592,9 @@ function expandAbbreviations(str) {
   res = res.replace(/\bpyp\b/gi, "previous year policy (PYP)");
   res = res.replace(/\brc\b/gi, "registration certificate (RC)");
   res = res.replace(/\bpoi\b/gi, "Period of Insurance (POI)");
+  res = res.replace(/\balt policy\b/gi, "alternative policy for same vehicle");
+  res = res.replace(/\balt\b/gi, "alternative policy for same vehicle");
+  res = res.replace(/\b(comp|compre)\b/gi, "comprehensive policy");
   return res;
 }
 
@@ -1656,6 +1730,7 @@ function buildCompleteMismatch() {
     "We appreciate your understanding in this regard."
   );
 
+  return parts.join("\n");
 }
 
 /* ---------- CHANGES NOT POSSIBLE ---------- */
@@ -1845,6 +1920,100 @@ function buildVasVoucher() {
   ].join("\n");
 }
 
+/* ---------- M PARIVAHAN MAIL ---------- */
+function buildMParivahanMail() {
+  const s = appState.sectionSelections;
+  const parts = [];
+
+  if (s.greeting !== false) parts.push("Greetings from PolicyBazaar.com!");
+  if (s.reference !== false) parts.push("This is with reference to your request.");
+
+  if (s.forwarded !== false) {
+    parts.push("We would like to inform you that we have forwarded your request to the insurer for the necessary update on the M-Parivahan / VAHAN portal.");
+  }
+
+  const formattedDocs = getFormattedDocuments();
+  if (s.documents && formattedDocs.length > 0) {
+    let docBlock = "We kindly request you to share the following document(s) to proceed further with your request:\n";
+    for (const d of formattedDocs) docBlock += "\n\u2022 " + d;
+    parts.push(docBlock);
+  }
+
+  if (s.tat !== false) {
+    const mode = appState.fieldValues.mParivahanTatMode || "10days";
+    let tatText = "";
+
+    if (mode === "10days") {
+      const showExact = s.showExactDate !== false;
+      if (showExact) {
+        const target = addDays(new Date(), 10);
+        tatText = `10 days (time till ${formatDateDDMonthYYYY(target)})`;
+      } else {
+        tatText = "10 days";
+      }
+    } else if (mode === "7wd") {
+      tatText = "7 working days";
+    } else if (mode === "custom") {
+      const days = parseInt(appState.fieldValues.mParivahanCustomDays, 10) || 10;
+      const customType = appState.fieldValues.mParivahanCustomType || "working";
+      const showExact = !!s.showExactDate;
+
+      if (customType === "normal") {
+        if (showExact) {
+          const target = addDays(new Date(), days);
+          tatText = `${days} ${days === 1 ? "day" : "days"} (time till ${formatDateDDMonthYYYY(target)})`;
+        } else {
+          tatText = `${days} ${days === 1 ? "day" : "days"}`;
+        }
+      } else {
+        tatText = `${days} ${days === 1 ? "working day" : "working days"}`;
+      }
+    }
+
+    parts.push(`Request you to kindly allow us ${tatText} to share the status update.`);
+  }
+
+  return parts.join("\n\n");
+}
+
+/* ---------- TAT ALREADY SHARED ---------- */
+function buildTatAlreadyShared() {
+  const s = appState.sectionSelections;
+  const mode = s.mailMode || "docs_received";
+
+  if (mode === "expedited") {
+    return [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your recent email regarding the status update of your request.",
+      "",
+      "We apologize for the inconvenience caused due to the waiting time.",
+      "",
+      "We would like to inform you that your request is under active processing with the insurance company, and we have already expedited it with the concerned team for a priority resolution.",
+      "",
+      "Request you to kindly allow us time until the completion of the Turnaround Time (TAT) shared in our earlier communication to share the status update.",
+      "",
+      "Please be assured that we are tracking your request closely to share the update at the earliest.",
+      "",
+      "We appreciate your patience and cooperation."
+    ].join("\n");
+  }
+
+  return [
+    "Greetings from PolicyBazaar.com!",
+    "",
+    "This is with reference to your request.",
+    "",
+    "Thank you for sharing the requested documents / details.",
+    "",
+    "We would like to inform you that we have forwarded your request to the insurance company for processing.",
+    "",
+    "Request you to kindly allow us time until the completion of the Turnaround Time (TAT) shared in our earlier communication to share the status update.",
+    "",
+    "We appreciate your patience and cooperation."
+  ].join("\n");
+}
+
 /* =========================================================
    RENDER � LEFT CONTROLS PANE
    ========================================================= */
@@ -1872,6 +2041,7 @@ function renderControls() {
     info.className = "control-group";
     info.innerHTML = `<div class="ctrl-label">Info</div><div style="font-size:12.5px;color:var(--text-soft);">This is a fixed template. Preview the mail on the right and click <b>Copy Mail</b>.</div>`;
     host.appendChild(info);
+    renderExtraNoteControls(host);
     return;
   }
 
@@ -1888,17 +2058,51 @@ function renderControls() {
     case "vahan_updated":   renderVahanUpdatedControls(host); break;
     case "renewal_contact": renderRenewalControls(host); break;
     case "tat_24hr":        renderTat24HrControls(host); break;
+    case "tat_already_shared": renderTatAlreadySharedControls(host); break;
     case "ownership_transfer": renderOwnershipTransferControls(host); break;
     case "video_inspection": renderVideoInspectionControls(host); break;
     case "two_w_video_inspection": renderTwoWVideoInspectionControls(host); break;
     case "as_per_rc_no_correction": renderAsPerRcNoCorrectionControls(host); break;
     case "request_closure": renderClosureControls(host); break;
     case "complete_mismatch": renderCompleteMismatchControls(host); break;
+    case "m_parivahan_mail": renderMParivahanMailControls(host); break;
     case "bank_statement": renderBankStatementControls(host); break;
     case "vas_voucher": renderVasVoucherControls(host); break;
     case "change_not_possible": renderChangeNotPossibleControls(host); break;
     case "sbi_ot": renderSbiOtControls(host); break;
   }
+
+  renderExtraNoteControls(host);
+}
+
+function renderExtraNoteControls(host) {
+  const grp = createGroup("Extra Note");
+  grp.appendChild(createToggleRow(
+    "Include Extra Note",
+    "Add custom note / text at the end of the mail",
+    !!appState.extraNoteActive,
+    val => {
+      appState.extraNoteActive = val;
+      renderControls();
+      updatePreview();
+    }
+  ));
+
+  if (appState.extraNoteActive) {
+    const ta = document.createElement("textarea");
+    ta.className = "text-area";
+    ta.placeholder = "Type your additional note here...";
+    ta.value = appState.extraNoteText || "";
+    ta.rows = 3;
+    ta.style.marginTop = "8px";
+    ta.addEventListener("input", () => {
+      appState.extraNoteText = ta.value;
+      updatePreview();
+    });
+    grp.appendChild(ta);
+  }
+
+  host.appendChild(grp);
 }
 
 function renderBlankMailControls(host) {
@@ -2651,8 +2855,26 @@ function renderCancellationControls(host) {
     "Alternate Policy Line",
     "Ask customer to share alternate policy",
     appState.sectionSelections.alternate,
-    val => { appState.sectionSelections.alternate = val; updatePreview(); }
+    val => {
+      appState.sectionSelections.alternate = val;
+      renderControls();
+      updatePreview();
+    }
   ));
+  if (appState.sectionSelections.alternate) {
+    grp.appendChild(createToggleRow(
+      "Include 'Bundle' Word",
+      "Show 'Alternate / Bundle policy' instead of 'Alternate policy'",
+      appState.sectionSelections.includeBundle,
+      val => { appState.sectionSelections.includeBundle = val; updatePreview(); }
+    ));
+    grp.appendChild(createToggleRow(
+      "Alternate Policy (If Any)",
+      "Add '(if any)' and move alternate policy line to the bottom of list",
+      appState.sectionSelections.alternateMayBe,
+      val => { appState.sectionSelections.alternateMayBe = val; updatePreview(); }
+    ));
+  }
   grp.appendChild(createToggleRow(
     "Bank Proof Line",
     "Ask for cancelled cheque/passbook of insured person",
@@ -2815,6 +3037,43 @@ function renderTat24HrControls(host) {
   host.appendChild(optGrp);
 }
 
+/* ---------- TAT ALREADY SHARED Controls ---------- */
+function renderTatAlreadySharedControls(host) {
+  const s = appState.sectionSelections;
+
+  const modeGrp = createGroup("Select Mail Type");
+  const chipWrap = document.createElement("div");
+  chipWrap.className = "chip-select";
+  chipWrap.style.marginTop = "6px";
+
+  const currentMode = s.mailMode || "docs_received";
+
+  const optDocs = document.createElement("button");
+  optDocs.type = "button";
+  optDocs.className = "chip-opt" + (currentMode === "docs_received" ? " active" : "");
+  optDocs.textContent = "Requirements Received";
+  optDocs.addEventListener("click", () => {
+    s.mailMode = "docs_received";
+    renderControls();
+    updatePreview();
+  });
+
+  const optExp = document.createElement("button");
+  optExp.type = "button";
+  optExp.className = "chip-opt" + (currentMode === "expedited" ? " active" : "");
+  optExp.textContent = "Expedited Follow-up";
+  optExp.addEventListener("click", () => {
+    s.mailMode = "expedited";
+    renderControls();
+    updatePreview();
+  });
+
+  chipWrap.appendChild(optDocs);
+  chipWrap.appendChild(optExp);
+  modeGrp.appendChild(chipWrap);
+  host.appendChild(modeGrp);
+}
+
 /* ---------- OWNERSHIP TRANSFER Controls ---------- */
 function renderOwnershipTransferControls(host) {
   const s = appState.sectionSelections;
@@ -2929,6 +3188,15 @@ function renderTwoWVideoInspectionControls(host) {
       updatePreview();
     }
   ));
+  grp.appendChild(createToggleRow(
+    "RC Copy / WhatsApp Note",
+    "Ask customer to show RC in video or send via Email / WhatsApp (8506013131)",
+    !!s.rcNote,
+    val => {
+      s.rcNote = val;
+      updatePreview();
+    }
+  ));
   host.appendChild(grp);
 
   if (s.reinspection) {
@@ -2968,6 +3236,15 @@ function renderVideoInspectionControls(host) {
     val => {
       s.reinspection = val;
       renderControls();
+      updatePreview();
+    }
+  ));
+  grp.appendChild(createToggleRow(
+    "RC Copy / WhatsApp Note",
+    "Ask customer to show RC in video or send via Email / WhatsApp (8506013131)",
+    !!s.rcNote,
+    val => {
+      s.rcNote = val;
       updatePreview();
     }
   ));
@@ -3068,6 +3345,7 @@ function renderCompleteMismatchControls(host) {
       updatePreview();
     }
   ));
+  host.appendChild(grp);
 }
 
 /* ---------- CHANGES NOT POSSIBLE Controls ---------- */
@@ -3339,6 +3617,186 @@ function renderVasVoucherControls(host) {
   host.appendChild(grp);
 }
 
+/* ---------- M PARIVAHAN MAIL Controls ---------- */
+function renderMParivahanMailControls(host) {
+  const s = appState.sectionSelections;
+
+  // 1. Sections Group
+  const grp1 = createGroup("Sections");
+  grp1.appendChild(createToggleRow("Greeting", "Greetings from PolicyBazaar.com!", s.greeting !== false, val => { s.greeting = val; updatePreview(); }));
+  grp1.appendChild(createToggleRow("Reference", "This is with reference to your request.", s.reference !== false, val => { s.reference = val; updatePreview(); }));
+  grp1.appendChild(createToggleRow("Forwarded Line", "Forwarded request to insurer for M-Parivahan update", s.forwarded !== false, val => { s.forwarded = val; updatePreview(); }));
+  host.appendChild(grp1);
+
+  // 2. Documents Group
+  const docGrp = createGroup("Documents");
+  docGrp.appendChild(createToggleRow("Include Documents", "Adds document request block", !!s.documents, val => {
+    s.documents = val;
+    renderControls();
+    updatePreview();
+  }));
+  if (s.documents) {
+    const docWrap = document.createElement("div");
+    docWrap.style.marginTop = "8px";
+    docWrap.innerHTML = `
+      <div class="doc-input-row">
+        <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. rc, pyp, tp"/>
+        <button type="button" class="doc-add-btn" id="docAddBtn">Add</button>
+      </div>
+      <div class="doc-chips" id="docChips"></div>
+    `;
+    docGrp.appendChild(docWrap);
+
+    setTimeout(() => {
+      const input = document.getElementById("docInput");
+      const btn = document.getElementById("docAddBtn");
+      const chips = document.getElementById("docChips");
+      if (input && btn && chips) {
+        const doAdd = () => {
+          const val = input.value.trim();
+          if (!val) return;
+          const norm = normalizeDocument(val);
+          if (!appState.documents.includes(norm)) {
+            appState.documents.push(norm);
+          }
+          input.value = "";
+          renderDocChips(chips);
+          updatePreview();
+        };
+        btn.addEventListener("click", doAdd);
+        input.addEventListener("keydown", e => {
+          if (e.key === "Enter") { e.preventDefault(); doAdd(); }
+        });
+        renderDocChips(chips);
+      }
+    }, 0);
+  }
+  host.appendChild(docGrp);
+
+  // 3. TAT Options Group
+  const tatGrp = createGroup("TAT / Status Update Line");
+  tatGrp.appendChild(createToggleRow(
+    "Include TAT Line",
+    "Request customer to allow time for status update",
+    s.tat !== false,
+    val => {
+      s.tat = val;
+      renderControls();
+      updatePreview();
+    }
+  ));
+
+  if (s.tat !== false) {
+    const mode = appState.fieldValues.mParivahanTatMode || "10days";
+    const chipSel = document.createElement("div");
+    chipSel.className = "chip-select";
+    chipSel.style.marginTop = "8px";
+
+    [
+      { value: "10days", label: "10 Days" },
+      { value: "7wd", label: "7 Working Days" },
+      { value: "custom", label: "Custom" }
+    ].forEach(opt => {
+      const c = document.createElement("button");
+      c.type = "button";
+      c.className = "chip-opt" + (mode === opt.value ? " active" : "");
+      c.textContent = opt.label;
+      c.addEventListener("click", () => {
+        appState.fieldValues.mParivahanTatMode = opt.value;
+        renderControls();
+        updatePreview();
+      });
+      chipSel.appendChild(c);
+    });
+    tatGrp.appendChild(chipSel);
+
+    if (mode === "10days") {
+      const exactToggle = createToggleRow(
+        "Show Exact Date",
+        "Convert 10 days to exact calendar date (time till DD-Month-YYYY)",
+        s.showExactDate !== false,
+        val => {
+          s.showExactDate = val;
+          updatePreview();
+        }
+      );
+      exactToggle.style.marginTop = "10px";
+      tatGrp.appendChild(exactToggle);
+    } else if (mode === "custom") {
+      const customType = appState.fieldValues.mParivahanCustomType || "working";
+      
+      const typeLbl = document.createElement("label");
+      typeLbl.className = "ctrl-label";
+      typeLbl.style.marginTop = "10px";
+      typeLbl.textContent = "Day Type";
+
+      const typeWrap = document.createElement("div");
+      typeWrap.className = "chip-select";
+      typeWrap.style.marginTop = "4px";
+
+      const optWorking = document.createElement("button");
+      optWorking.type = "button";
+      optWorking.className = "chip-opt" + (customType === "working" ? " active" : "");
+      optWorking.textContent = "Working Days";
+      optWorking.addEventListener("click", () => {
+        appState.fieldValues.mParivahanCustomType = "working";
+        renderControls();
+        updatePreview();
+      });
+
+      const optNormal = document.createElement("button");
+      optNormal.type = "button";
+      optNormal.className = "chip-opt" + (customType === "normal" ? " active" : "");
+      optNormal.textContent = "Normal Days";
+      optNormal.addEventListener("click", () => {
+        appState.fieldValues.mParivahanCustomType = "normal";
+        renderControls();
+        updatePreview();
+      });
+
+      typeWrap.appendChild(optWorking);
+      typeWrap.appendChild(optNormal);
+      tatGrp.appendChild(typeLbl);
+      tatGrp.appendChild(typeWrap);
+
+      const dayLbl = document.createElement("label");
+      dayLbl.className = "ctrl-label";
+      dayLbl.style.marginTop = "10px";
+      dayLbl.textContent = customType === "normal" ? "Custom Normal Days" : "Custom Working Days";
+
+      const dayInput = document.createElement("input");
+      dayInput.type = "number";
+      dayInput.min = "1";
+      dayInput.max = "60";
+      dayInput.className = "text-input";
+      dayInput.placeholder = "e.g. 10";
+      dayInput.value = appState.fieldValues.mParivahanCustomDays || "10";
+      dayInput.addEventListener("input", () => {
+        appState.fieldValues.mParivahanCustomDays = dayInput.value;
+        updatePreview();
+      });
+      tatGrp.appendChild(dayLbl);
+      tatGrp.appendChild(dayInput);
+
+      if (customType === "normal") {
+        const exactToggle = createToggleRow(
+          "Show Exact Date",
+          "Convert custom days to exact calendar date (time till DD-Month-YYYY)",
+          !!s.showExactDate,
+          val => {
+            s.showExactDate = val;
+            updatePreview();
+          }
+        );
+        exactToggle.style.marginTop = "10px";
+        tatGrp.appendChild(exactToggle);
+      }
+    }
+  }
+
+  host.appendChild(tatGrp);
+}
+
 /* ---------- Helpers ---------- */
 function createGroup(title) {
   const wrap = document.createElement("div");
@@ -3409,6 +3867,7 @@ function renderPreviewHTML(text) {
     "docs_only",
     "docs_required",
     "rf",
+    "m_parivahan_mail",
     "ownership_transfer",
     "cancellation",
     "insured_person_change",
@@ -3467,6 +3926,8 @@ function selectTemplate(id) {
   appState.showTatOptions = false;
   appState.updateDateOffset = 10;
   appState.tatDays = 10;
+  appState.extraNoteActive = false;
+  appState.extraNoteText = "";
 
   // Init section selections
   if (tpl.id === "rf") {
@@ -3475,6 +3936,19 @@ function selectTemplate(id) {
       documents: false, updateDate: true, tat: true,
       charges: true, originalCopy: true, ncbNote: false
     };
+  } else if (tpl.id === "tat_already_shared") {
+    appState.sectionSelections = { ...tpl.defaultSelections };
+  } else if (tpl.id === "m_parivahan_mail") {
+    appState.sectionSelections = {
+      greeting: true,
+      reference: true,
+      forwarded: true,
+      documents: false,
+      tat: true,
+      showExactDate: true
+    };
+    appState.fieldValues.mParivahanTatMode = "10days";
+    appState.documents = [];
   } else if (tpl.id === "ownership_transfer") {
     appState.sectionSelections = { clarification: false };
     appState.documents = [];
