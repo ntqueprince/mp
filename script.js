@@ -467,9 +467,9 @@ const mailTemplates = [
       "",
       "This is with reference to your request.",
       "",
-      "We would like to inform you that the policy update on the M-Parivahan/VAHAN portal may take up to 7 working days. The processing time remains the same irrespective of the policy start date.",
+      "We would like to inform you that the policy update on the M-Parivahan/VAHAN portal may take up to 7 working days from the policy start date. Please note that the processing time is calculated from the policy start date and not from the purchase date.",
       "",
-      "Meanwhile, you may use the soft copy (PDF) of your insurance policy as valid proof of insurance, if required by any concerned authority.",
+      "Meanwhile, post the policy start date, you may use the soft copy (PDF) of your insurance policy as valid proof of insurance, if required by any concerned authority.",
       "",
       "We appreciate your patience and understanding."
     ].join("\n")
@@ -1440,23 +1440,17 @@ function buildCancellation() {
 
   const isMayBe = appState.sectionSelections.alternateMayBe;
   const includeBundle = appState.sectionSelections.includeBundle;
-  const policyName = includeBundle 
-    ? "Alternate / Bundle policy of the same vehicle"
-    : "Alternate policy of the same vehicle";
-  const alternateLine = isMayBe 
-    ? `${policyName} (if any)`
-    : policyName;
+  const shortPolicyName = includeBundle 
+    ? "Alternate / Bundle policy"
+    : "Alternate policy";
+  const policyName = `${shortPolicyName} of the same vehicle`;
 
   if (appState.sectionSelections.alternate && !isMayBe) {
-    items.push(alternateLine);
+    items.push(policyName);
   }
 
   if (appState.sectionSelections.neft) {
     items.push("A cancelled cheque or bank passbook of the insured person as per policy");
-  }
-
-  if (appState.sectionSelections.alternate && isMayBe) {
-    items.push(alternateLine);
   }
 
   if (items.length > 0) {
@@ -1471,6 +1465,10 @@ function buildCancellation() {
 
   if (appState.sectionSelections.irdaiNote) {
     parts.push("Note: Alternate should be comprehensive, incase of alternate TP, the later issued policy will be cancelled");
+  }
+
+  if (appState.sectionSelections.alternate && isMayBe) {
+    parts.push(`Note: ${shortPolicyName} may be required as per insurer confirmation.`);
   }
 
   return parts.join("\n\n");
@@ -2384,8 +2382,8 @@ function renderRFControls(host) {
   host.appendChild(grp1);
 
   /* Documents */
-  const docGrp = createGroup("Documents");
-  docGrp.appendChild(createToggleRow("Include Documents", "Adds document request block", s.documents, val => {
+  const docGrp = createGroup("📄 Documents");
+  docGrp.appendChild(createToggleRow("📄 Include Documents", "Adds document request block", s.documents, val => {
     s.documents = val;
     if (val) {
       s.updateDate = false; // auto-off per rules
@@ -2869,8 +2867,8 @@ function renderCancellationControls(host) {
       val => { appState.sectionSelections.includeBundle = val; updatePreview(); }
     ));
     grp.appendChild(createToggleRow(
-      "Alternate Policy (If Any)",
-      "Add '(if any)' and move alternate policy line to the bottom of list",
+      "Alternate Policy (May Be Note)",
+      "Show note at bottom: Alternate / Bundle policy may be required as per insurer confirmation",
       appState.sectionSelections.alternateMayBe,
       val => { appState.sectionSelections.alternateMayBe = val; updatePreview(); }
     ));
@@ -3629,8 +3627,8 @@ function renderMParivahanMailControls(host) {
   host.appendChild(grp1);
 
   // 2. Documents Group
-  const docGrp = createGroup("Documents");
-  docGrp.appendChild(createToggleRow("Include Documents", "Adds document request block", !!s.documents, val => {
+  const docGrp = createGroup("📄 Documents");
+  docGrp.appendChild(createToggleRow("📄 Include Documents", "Adds document request block", !!s.documents, val => {
     s.documents = val;
     renderControls();
     updatePreview();
