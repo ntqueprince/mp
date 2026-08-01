@@ -3901,8 +3901,7 @@ function updatePreview(isControlChange = true) {
   const text = buildPreview();
   card.innerHTML = renderPreviewHTML(text);
 
-  const copyBtn = document.getElementById("copyBtn");
-  copyBtn.disabled = !text.trim();
+  setCopyButtonsDisabled(!text.trim());
 }
 
 /* =========================================================
@@ -4020,6 +4019,24 @@ function showResults(query) {
   dd.classList.add("visible");
 }
 
+function getCopyButtons() {
+  return ["copyBtn", "copyTopBtn"]
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
+}
+
+function setCopyButtonsDisabled(disabled) {
+  getCopyButtons().forEach(btn => {
+    btn.disabled = disabled;
+  });
+}
+
+function setCopyButtonsCopied(copied) {
+  getCopyButtons().forEach(btn => {
+    btn.classList.toggle("copied", copied);
+    btn.textContent = copied ? "Copied" : "Copy Mail";
+  });
+}
 /* =========================================================
    COPY LOGIC
    ========================================================= */
@@ -4044,15 +4061,10 @@ async function copyMail() {
     success = fallbackCopy(text);
   }
 
-  const btn = document.getElementById("copyBtn");
   if (success) {
-    btn.classList.add("copied");
-    btn.textContent = "Copied";
+    setCopyButtonsCopied(true);
     showToast("Mail copied to clipboard", "success");
-    setTimeout(() => {
-      btn.classList.remove("copied");
-      btn.textContent = "Copy Mail";
-    }, 1500);
+    setTimeout(() => setCopyButtonsCopied(false), 1500);
   } else {
     showToast("Unable to copy. Please select & copy manually.", "error");
   }
@@ -4405,14 +4417,16 @@ function init() {
   document.getElementById("changeTplBtn").addEventListener("click", () => {
     appState.activeTemplateId = null;
     document.getElementById("previewCard").textContent = "";
-    document.getElementById("copyBtn").disabled = true;
+    setCopyButtonsDisabled(true);
     document.getElementById("searchInput").focus();
     renderControls();
   });
 
-  // Footer buttons
+  // Action buttons
   document.getElementById("resetBtn").addEventListener("click", resetTemplate);
+  document.getElementById("resetTopBtn").addEventListener("click", resetTemplate);
   document.getElementById("copyBtn").addEventListener("click", copyMail);
+  document.getElementById("copyTopBtn").addEventListener("click", copyMail);
 
   // Preview editing
   const card = document.getElementById("previewCard");
@@ -4482,7 +4496,7 @@ function init() {
   // Initial render
   renderControls();
   updatePreview();
-  document.getElementById("copyBtn").disabled = true;
+  setCopyButtonsDisabled(true);
 }
 
 document.addEventListener("DOMContentLoaded", init);
