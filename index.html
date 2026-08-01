@@ -73,7 +73,11 @@
     <section class="preview-pane">
       <div class="preview-header">
         <span>Live Preview</span>
-        <span class="preview-hint">Double-click to edit</span>
+        <div class="preview-actions">
+          <span class="preview-hint">Double-click to edit</span>
+          <button id="resetTopBtn" class="btn ghost preview-reset-btn">Reset</button>
+          <button id="copyTopBtn" class="btn primary preview-copy-btn" disabled>Copy Mail</button>
+        </div>
       </div>
       <div id="previewCard" class="preview-card" contenteditable="false" spellcheck="false" aria-label="Mail preview"></div>
     </section>
