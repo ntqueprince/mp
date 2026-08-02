@@ -322,8 +322,28 @@ const mailTemplates = [
     header: "2W VIDEO INSPECTION",
     description: "Two-wheeler self-video inspection instructions",
     keywords: ["2w inspection", "2w video", "bike video", "bike inspection", "two wheeler video", "two wheeler inspection", "2 wheeler inspection", "2 wheeler video", "scooter inspection", "self video inspection", "pb inspect"],
-    type: "selectable",
-    defaultSelections: { reinspection: false }
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "Request you to follow the below guidelines to do a self video inspection of your TWO WHEELER.",
+      "",
+      "Please follow the process outlined below:",
+      "",
+      "1. Install the PB-App from the Play Store.",
+      "2. Go to Account > Vehicle Inspection > Changes in Existing Policy.",
+      "3. Input your policy number and vehicle registration number.",
+      "4. Complete the checklist.",
+      "5. Watch the demo video.",
+      "6. Start the video inspection.",
+      "",
+      "You will need to capture the following details:",
+      "",
+      "• RC copy (front and back side)",
+      "• Current odometer reading of the vehicle",
+      "• Engraved chassis number",
+      "• 360-degree view of the vehicle, including front and back number plate."
+    ].join("\n")
   },
   /* ---------- 5. 4W VIDEO INSPECTION ---------- */
   {
