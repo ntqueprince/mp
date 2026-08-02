@@ -322,28 +322,8 @@ const mailTemplates = [
     header: "2W VIDEO INSPECTION",
     description: "Two-wheeler self-video inspection instructions",
     keywords: ["2w inspection", "2w video", "bike video", "bike inspection", "two wheeler video", "two wheeler inspection", "2 wheeler inspection", "2 wheeler video", "scooter inspection", "self video inspection", "pb inspect"],
-    type: "fixed",
-    body: [
-      "Greetings from PolicyBazaar.com!",
-      "",
-      "Request you to follow the below guidelines to do a self video inspection of your TWO WHEELER.",
-      "",
-      "Please follow the process outlined below:",
-      "",
-      "1. Install the PB-App from the Play Store.",
-      "2. Go to Account > Vehicle Inspection > Changes in Existing Policy.",
-      "3. Input your policy number and vehicle registration number.",
-      "4. Complete the checklist.",
-      "5. Watch the demo video.",
-      "6. Start the video inspection.",
-      "",
-      "You will need to capture the following details:",
-      "",
-      "• RC copy (front and back side)",
-      "• Current odometer reading of the vehicle",
-      "• Engraved chassis number",
-      "• 360-degree view of the vehicle, including front and back number plate."
-    ].join("\n")
+    type: "selectable",
+    defaultSelections: { reinspection: false, rcNote: false }
   },
   /* ---------- 5. 4W VIDEO INSPECTION ---------- */
   {
@@ -1360,43 +1340,40 @@ function buildTwoWVideoInspection() {
   const reason = expandAbbreviations(appState.fieldValues.twoWReinspectionReason || "");
 
   const parts = [
-    "Greetings from PolicyBazaar.com!",
-    "This is with reference to your request."
+    "Greetings from PolicyBazaar.com!"
   ];
 
   if (s.reinspection && reason.trim()) {
-    parts.push(`Note: We request you to upload the video again because ${reason.trim()}.`);
+    parts.push("", `Note: We request you to upload the video again because ${reason.trim()}.`);
   }
 
   if (s.rcNote) {
-    parts.push("Note: Please ensure to clearly capture the RC (Registration Certificate) in the video. Alternatively, you may send a copy of the RC separately by replying to this email or on WhatsApp at 8506013131 from your registered mobile number.");
+    parts.push("", "Note: Please ensure to clearly capture the RC (Registration Certificate) in the video. Alternatively, you may send a copy of the RC separately by replying to this email or on WhatsApp at 8506013131 from your registered mobile number.");
   }
 
   parts.push(
-    "Request you to follow the below guidelines to do a self video inspection of your vehicle.",
-    "For Android:\nhttps://play.google.com/store/apps/details?id=com.policybazaar&hl=en-GB&pli=1&pid=mobile_hamburger&c=mobile_hamburger_dropdown",
-    "For iOS Devices:\nhttps://apps.apple.com/in/app/id956740142?mt=8",
-    "Mobile phone criteria:\n\n\u2022 Android based smart phone with Android version 5.0 or above OR iOS based device.\n\u2022 Mobile camera should be 4 Mega pixels or above.\n\u2022 Mobile Data or Wi-Fi connection should be turned ON on your smart phone.",
-    "Inspection Guidelines:\n\n\u2022 The video has to be captured during day light.\n\u2022 Videos captured in basements or shades (e.g. tree shades) will not be valid.",
-    "Video capture process:\n\n" +
-    "1. Install PB-inspect App on Google Playstore:\nhttps://play.google.com/store/apps/details?id=com.pb.inspection\n" +
-    "2. You can view the Demo video to understand the process further.\n" +
-    "3. Click on \"Start Inspection\", enter your Mobile number and Vehicle number to start the inspection.\n" +
-    "4. Start from front side of the vehicle with clear visibility of Registration number.\n" +
-    "5. Move towards left and start to capture the entire vehicle by moving 360 degrees around the vehicle.\n" +
-    "6. When you are on the back side of the vehicle, ensure clear visibility of Registration number.\n" +
-    "7. Ensure you capture Chassis number as part of the video.\n" +
-    "8. Also, ensure that you capture the odometer reading.\n" +
-    "9. In case of any dent or scratches, please take the mobile closer to the place where the dent or scratch is visible and capture a picture as well using the \"Capture\" option available on right hand side bottom corner of the screen while the video capture process is ON.\n" +
-    "10. You need not exit the App for this picture capture process. The same will happen while the video capturing is ON.\n" +
-    "11. 360 Degree view of the vehicle has to be captured in a single video and the vehicle cannot go out of focus at any time of the video capturing.\n" +
-    "12. The RC copy and Previous year policy copy (if applicable) should be captured in the video either at the start or end.\n" +
-    "13. Once you are done with capturing the video, please click the Upload button and ensure you do not exit the screen while the upload is in process."
+    "",
+    "Request you to follow the below guidelines to do a self video inspection of your TWO WHEELER.",
+    "",
+    "Please follow the process outlined below:",
+    "",
+    "1. Install the PB-App from the Play Store.",
+    "2. Go to Account > Vehicle Inspection > Changes in Existing Policy.",
+    "3. Input your policy number and vehicle registration number.",
+    "4. Complete the checklist.",
+    "5. Watch the demo video.",
+    "6. Start the video inspection.",
+    "",
+    "You will need to capture the following details:",
+    "",
+    "• RC copy (front and back side)",
+    "• Current odometer reading of the vehicle",
+    "• Engraved chassis number",
+    "• 360-degree view of the vehicle, including front and back number plate."
   );
 
-  return parts.join("\n\n");
+  return parts.join("\n");
 }
-
 /* ---------- 4W VIDEO INSPECTION ---------- */
 function buildVideoInspection() {
   const s = appState.sectionSelections;
