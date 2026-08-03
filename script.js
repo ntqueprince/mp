@@ -751,12 +751,33 @@ const mailTemplates = [
     type: "hybrid",
     defaultSelections: {
       paCoverSection: true,
-      shortfallPayment: true,
+      shortfallPayment: false,
       tat: true,
       charges: true,
       inspection: true,
       originalCopy: true
     }
+  },
+  /* ---------- BAJAJ ZERO DEP ---------- */
+  {
+    id: "bajaj_zero_dep",
+    header: "BAJAJ ZERO DEP",
+    description: "Zero Depreciation cover mentioned as Eco Assure - Repair Protection",
+    keywords: ["bajaj zero dep", "zd included", "zd", "zero depreciation", "zero dep", "eco assure", "eco repair", "repair protection", "bajaj repair", "preferred repair workshop", "preferred workshop", "zd query", "claim assistance", "service assistance"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your request.",
+      "",
+      "We would like to inform you that Zero Depreciation cover is included in your policy and is mentioned as \"Eco Assure - Repair Protection\".",
+      "",
+      "Please note that the Eco Repair cover is applicable only at Bajaj General Preferred Repair Workshops.",
+      "",
+      "For any further service-related assistance, you may contact our service team at 1800-258-5970 or write to us at CARE@POLICYBAZAAR.COM.",
+      "",
+      "For any claim-related assistance, you may contact our claims department at Spotclaims@policybazaar.com or call our toll-free number 1800-258-5881."
+    ].join("\n")
   },
   /* ---------- ZD VIDEO ---------- */
   {
@@ -2092,7 +2113,7 @@ function renderExtraNoteControls(host) {
     ta.style.marginTop = "8px";
     ta.addEventListener("input", () => {
       appState.extraNoteText = ta.value;
-      updatePreview();
+      updatePreview(true, true);
     });
     grp.appendChild(ta);
   }
@@ -3888,7 +3909,7 @@ function renderPreviewHTML(text) {
   }).join("\n");
 }
 
-function updatePreview(isControlChange = true) {
+function updatePreview(isControlChange = true, scrollPreviewToBottom = false) {
   // If user is currently editing preview, don't overwrite
   if (appState.previewEditing) return;
   if (isControlChange) {
@@ -3897,6 +3918,11 @@ function updatePreview(isControlChange = true) {
   const card = document.getElementById("previewCard");
   const text = buildPreview();
   card.innerHTML = renderPreviewHTML(text);
+  if (scrollPreviewToBottom) {
+    requestAnimationFrame(() => {
+      card.scrollTop = card.scrollHeight;
+    });
+  }
 
   setCopyButtonsDisabled(!text.trim());
 }
