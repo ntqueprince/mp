@@ -54,7 +54,8 @@ const DOC_MAP = [
   { keys: ["address", "address proof", "addr", "address proof copy"], out: "ADDRESS PROOF REFLECTING THE EXACT SAME ADDRESS TO BE UPDATED" },
   { keys: ["neft", "bank details", "bank detail", "cancelled cheque", "cheque", "passbook", "bank passbook", "neft details", "cancel"], out: "A CANCELLED CHEQUE OR BANK PASSBOOK OF THE INSURED PERSON AS PER POLICY" },
   { keys: ["zd", "zero dep", "zero depreciation"], out: "ZERO DEPRECIATION" },
-  { keys: ["alt", "alt policy", "alternate", "alternate policy", "alternative policy"], out: "ALTERNATE POLICY FOR SAME VEHICLE" }
+  { keys: ["alt", "alt policy", "alternate", "alternate policy", "alternative policy"], out: "ALTERNATE POLICY FOR SAME VEHICLE" },
+  { keys: ["mmv", "mv", "make model variant", "model variant", "make model"], out: "MAKE, MODEL & VARIANT DETAILS" }
 ];
 
 function normalizeDocument(raw) {
@@ -269,7 +270,7 @@ const mailTemplates = [
       "",
       "This is with reference to your request regarding the addition of GST details to your active insurance policy.",
       "",
-      "We forwarded your request to the insurance provider for processing. However, the insurer has informed us that as per their guidelines, they do not allow the addition or modification of GST details once the policy has been generated and issued. Since this constraint is enforced directly by the insurer, we are unable to make any changes to the tax invoice at this stage.",
+      "We forwarded your request to the insurance provider for processing. However, the insurer has informed us that as per their guidelines, they do not allow the addition or endorsement of GST details once the policy has been generated and issued. Since this constraint is enforced directly by the insurer, we are unable to make any changes to the tax invoice at this stage.",
       "",
       "We sincerely regret the inconvenience this may cause and appreciate your understanding and cooperation."
     ].join("\n")
@@ -340,9 +341,9 @@ const mailTemplates = [
     id: "cancellation",
     header: "CANCELLATION",
     description: "Post-issuance policy cancellation process",
-    keywords: ["cancellation", "cancel", "post issuance cancel", "post issuance cancellation", "post issunce cancel", "post issunce cancellation", "118", "alt policy", "alternate policy", "alternative policy", "alternative", "neft", "refund details", "bank details", "written consent", "cancelled cheque", "bank passbook", "package policy"],
+    keywords: ["cancellation", "cancel", "post issuance cancel", "post issuance cancellation", "post issunce cancel", "post issunce cancellation", "118", "alt policy", "alternate policy", "alternative policy", "alternative", "neft", "refund details", "bank details", "written consent", "cancelled cheque", "bank passbook", "package policy", "documents", "docs", "rc", "pyp", "aadhar", "pan", "dl", "noc", "cng"],
     type: "selectable",
-    defaultSelections: { irdaiNote: false, consent: false, alternate: true, alternateMayBe: false, neft: false }
+    defaultSelections: { irdaiNote: false, consent: false, alternate: true, alternateMayBe: false, neft: false, documents: false }
   },
 
   /* ---------- 7. CHARGEBACK REVERSAL ---------- */
@@ -605,10 +606,11 @@ const mailTemplates = [
   {
     id: "change_not_possible",
     header: "CHANGES NOT POSSIBLE",
-    description: "Informing customer that their requested endorsement (IDV, POI) cannot be processed",
-    keywords: ["changes not possible", "not possible", "idv not possible", "poi not possible", "idv endorsement", "poi change", "rejected"],
+    description: "Informing customer that their requested endorsement (IDV, POI, Name, PYP active, Running Claim) cannot be processed",
+    keywords: ["changes not possible", "not possible", "idv not possible", "poi not possible", "idv endorsement", "poi change", "rejected", "pyp active", "active pyp", "after expiry", "previous policy active", "pre start", "running claim", "active claim", "claim pending", "claim closure letter"],
     type: "selectable",
     defaultSelections: {
+      pypActiveMode: false,
       idvNotPossible: true,
       reasonThirdParty: true,
       poiNotPossible: false,
@@ -628,7 +630,7 @@ const mailTemplates = [
       "",
       "This is with reference to your request for an address change in your insurance policy.",
       "",
-      "To process the requested modification, we kindly request you to share a valid address proof reflecting the exact same address that needs to be updated in the policy.",
+      "To process the requested endorsement, we kindly request you to share a valid address proof reflecting the exact same address that needs to be updated in the policy.",
       "",
       "Once we receive the correct document matching the requested new address, we will proceed further with your update request.",
       "",
@@ -706,23 +708,19 @@ const mailTemplates = [
   {
     id: "running_claim",
     header: "RUNNING CLAIM",
-    description: "Modification rejected due to an active running claim on policy",
+    description: "Endorsement rejected due to an active running claim on policy",
     keywords: ["running claim", "active claim", "claim pending", "claim settlement", "claim closure letter", "endorsement claim", "claim settlement letter", "claim process"],
     type: "fixed",
     body: [
       "Greetings from PolicyBazaar.com!",
       "",
-      "This is with reference to your request for making changes in your vehicle insurance policy.",
+      "This is with reference to your request regarding the endorsement of your insurance policy.",
       "",
-      "We would like to inform you that the Insurance Company cannot process the requested modification at this moment due to an active, ongoing claim on your policy.",
+      "We would like to inform you that your request cannot be processed at this stage due to an active, ongoing claim on your policy. The insurance company can process endorsement requests only after the current claim is closed.",
       "",
-      "To proceed further, we request you to kindly:",
+      "We kindly request you to raise a fresh endorsement request once your claim is closed, along with a copy of the Claim Closure Letter (if applicable).",
       "",
-      "1. Allow the current claim process to complete successfully.",
-      "2. Obtain the Claim Closure Letter / Settlement Letter from the insurer once the claim is resolved.",
-      "3. Share a copy of the Claim Closure Letter with us so we can re-initiate your endorsement request.",
-      "",
-      "We appreciate your patience and cooperation in this matter."
+      "We sincerely regret any inconvenience caused and appreciate your understanding in this regard."
     ].join("\n")
   },
   /* ---------- DND ACTIVATED ---------- */
@@ -809,6 +807,23 @@ const mailTemplates = [
       tat: true,
       showExactDate: true
     }
+  },
+  /* ---------- RSA REIMBURSEMENT ---------- */
+  {
+    id: "rsa_reimbursement",
+    header: "RSA REIMBURSEMENT",
+    description: "Roadside Assistance (RSA) reimbursement case escalation update mail",
+    keywords: ["rsa reimbursement", "rsa", "roadside assistance", "reimbursement", "rsa claim", "rsa status", "roadside assistance reimbursement", "rsa escalation"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your request regarding your Roadside Assistance (RSA) reimbursement.",
+      "",
+      "We have escalated your case to the concerned department for review. Our team is actively processing it, and you will receive an update within the next 24 to 48 hours.",
+      "",
+      "We appreciate your patience while we work on resolving this for you."
+    ].join("\n")
   }
 ];
 
@@ -1471,6 +1486,13 @@ function buildCancellation() {
     items.push("A cancelled cheque or bank passbook of the insured person as per policy");
   }
 
+  if (appState.sectionSelections.documents) {
+    const formattedDocs = getFormattedDocuments();
+    for (const d of formattedDocs) {
+      items.push(d);
+    }
+  }
+
   if (items.length > 0) {
     const formatted = items.map((text, idx) => `${idx + 1}. ${text}`);
     parts.push("However, we kindly request you to provide the following:\n\n" + formatted.join("\n"));
@@ -1610,6 +1632,8 @@ function expandAbbreviations(str) {
   res = res.replace(/\bpoi\b/gi, "Period of Insurance (POI)");
   res = res.replace(/\balt policy\b/gi, "alternative policy for same vehicle");
   res = res.replace(/\balt\b/gi, "alternative policy for same vehicle");
+  res = res.replace(/\brsa\b/gi, "Roadside Assistance (RSA)");
+  res = res.replace(/\b(mmv|mv)\b/gi, "Make, Model & Variant");
   res = res.replace(/\b(comp|compre)\b/gi, "comprehensive policy");
   return res;
 }
@@ -1630,6 +1654,7 @@ function polishConcern(raw) {
   }
 
   const mappings = [
+    { keys: ["rsa", "roadside assistance"], label: "Roadside Assistance (RSA) reimbursement" },
     { keys: ["ncb", "no claim bonus"], label: "NCB (No Claim Bonus) update" },
     { keys: ["address", "addr"], label: "Address update" },
     { keys: ["nominee"], label: "Nominee details update" },
@@ -1640,7 +1665,7 @@ function polishConcern(raw) {
     { keys: ["chassis"], label: "Chassis number correction" },
     { keys: ["engine"], label: "Engine number correction" },
     { keys: ["reg", "registration", "vehicle number"], label: "Registration number correction" },
-    { keys: ["model", "variant", "make"], label: "Vehicle details correction" },
+    { keys: ["model", "variant", "make", "mmv", "mv"], label: "Make, Model & Variant correction" },
     { keys: ["pyp", "previous year", "previous policy"], label: "Previous policy details update" },
     { keys: ["gender"], label: "Gender correction" },
     { keys: ["dob", "date of birth"], label: "Date of birth correction" },
@@ -1751,18 +1776,50 @@ function buildCompleteMismatch() {
 
 /* ---------- CHANGES NOT POSSIBLE ---------- */
 function buildChangeNotPossible() {
+  const s = appState.sectionSelections;
   let change = (appState.fieldValues.notPossibleChange || "").trim();
-  const reason = (appState.fieldValues.notPossibleReason || "").trim();
 
   // Automatically expand abbreviations
   change = expandAbbreviations(change);
   change = change.replace(/\bidv\b/gi, "IDV (Insured Declared Value)");
-  change = change.replace(/\bpoi\b/gi, "POI (Period of Insurance)");
+  change = change.replace(/\bpoi\b/gi, "Period of Insurance (POI)");
+
+  if (s.runningClaimMode) {
+    const changeDetail = change ? ` for ${change}` : "";
+    return [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your request regarding the endorsement of your insurance policy.",
+      "",
+      `We would like to inform you that your request${changeDetail} cannot be processed at this stage due to an active, ongoing claim on your policy. The insurance company can process endorsement requests only after the current claim is closed.`,
+      "",
+      "We kindly request you to raise a fresh endorsement request once your claim is closed, along with a copy of the Claim Closure Letter (if applicable).",
+      "",
+      "We sincerely regret any inconvenience caused and appreciate your understanding in this regard."
+    ].join("\n");
+  }
+
+  if (s.pypActiveMode) {
+    const targetField = change || "Period of Insurance (POI)";
+    return [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your request regarding the endorsement of your insurance policy.",
+      "",
+      `We would like to inform you that the requested endorsement or changes cannot be processed at this stage, as your current policy has not started yet. The insurance company can only correct the ${targetField} once the policy becomes active.`,
+      "",
+      "We kindly request you to raise a fresh endorsement request once your policy is active.",
+      "",
+      "We sincerely regret any inconvenience caused and appreciate your understanding in this regard."
+    ].join("\n");
+  }
+
+  const reason = (appState.fieldValues.notPossibleReason || "").trim();
 
   const parts = [
     "Greetings from PolicyBazaar.com!",
     "",
-    "This is with reference to your request regarding the modification in your insurance policy."
+    "This is with reference to your request regarding the endorsement in your insurance policy."
   ];
 
   if (change) {
@@ -2854,6 +2911,30 @@ function renderInsuredPersonChangeControls(host) {
 }
 /* ---------- CANCELLATION Controls ---------- */
 function renderCancellationControls(host) {
+  const s = appState.sectionSelections;
+
+  /* Documents Group */
+  const docGrp = createGroup("📄 Documents");
+  docGrp.appendChild(createToggleRow("📄 Include Documents", "Adds document request block", !!s.documents, val => {
+    s.documents = val;
+    renderControls();
+    updatePreview();
+  }));
+
+  if (s.documents) {
+    const docWrap = document.createElement("div");
+    docWrap.style.marginTop = "8px";
+    docWrap.innerHTML = `
+      <div class="doc-input-row">
+        <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. rc, pyp, aadhar, dl, noc"/>
+        <button type="button" class="doc-add-btn" id="docAddBtn">Add</button>
+      </div>
+      <div class="doc-chips" id="docChips"></div>
+    `;
+    docGrp.appendChild(docWrap);
+  }
+  host.appendChild(docGrp);
+
   const grp = createGroup("Options");
   grp.appendChild(createToggleRow(
     "Insurer Norms Note",
@@ -2898,6 +2979,30 @@ function renderCancellationControls(host) {
     val => { appState.sectionSelections.neft = val; updatePreview(); }
   ));
   host.appendChild(grp);
+
+  if (s.documents) {
+    const input = document.getElementById("docInput");
+    const btn = document.getElementById("docAddBtn");
+    const chips = document.getElementById("docChips");
+    if (input && btn && chips) {
+      const doAdd = () => {
+        const val = input.value.trim();
+        if (!val) return;
+        const norm = normalizeDocument(val);
+        if (!appState.documents.includes(norm)) {
+          appState.documents.push(norm);
+        }
+        input.value = "";
+        renderDocChips(chips);
+        updatePreview();
+      };
+      btn.addEventListener("click", doAdd);
+      input.addEventListener("keydown", e => {
+        if (e.key === "Enter") { e.preventDefault(); doAdd(); }
+      });
+      renderDocChips(chips);
+    }
+  }
 }
 /* ---------- AS PER RC NO CORRECTION Controls ---------- */
 function renderAsPerRcNoCorrectionControls(host) {
@@ -3366,15 +3471,52 @@ function renderCompleteMismatchControls(host) {
 
 /* ---------- CHANGES NOT POSSIBLE Controls ---------- */
 function renderChangeNotPossibleControls(host) {
-  const grp = createGroup("Custom Rejection Details");
+  const s = appState.sectionSelections;
+
+  // Toggle Group for Mode Options
+  const modeGrp = createGroup("Mode Options");
+  modeGrp.appendChild(createToggleRow(
+    "Policy Not Started Mode",
+    "Insurer requires policy to become active before correcting details (POI, Name, Mobile, MMV)",
+    !!s.pypActiveMode,
+    val => {
+      s.pypActiveMode = val;
+      if (val) s.runningClaimMode = false;
+      renderControls();
+      updatePreview();
+    }
+  ));
+  modeGrp.appendChild(createToggleRow(
+    "Running Claim Mode",
+    "Insurer cannot process changes due to active ongoing claim on policy",
+    !!s.runningClaimMode,
+    val => {
+      s.runningClaimMode = val;
+      if (val) s.pypActiveMode = false;
+      renderControls();
+      updatePreview();
+    }
+  ));
+  host.appendChild(modeGrp);
+
+  const groupTitle = s.runningClaimMode 
+    ? "Claim & Detail Options" 
+    : (s.pypActiveMode ? "Correction Details" : "Custom Rejection Details");
+
+  const grp = createGroup(groupTitle);
 
   const changeLbl = document.createElement("label");
   changeLbl.className = "ctrl-label";
-  changeLbl.textContent = "What change is not possible? (e.g. IDV update)";
+  changeLbl.textContent = s.runningClaimMode
+    ? "Detail requested (Optional, e.g. Name, MMV, POI)"
+    : (s.pypActiveMode ? "Detail to correct (e.g. POI, Name, Mobile Number, MMV)" : "What change is not possible? (e.g. IDV update)");
+  
   const changeInp = document.createElement("input");
   changeInp.type = "text";
   changeInp.className = "text-input";
-  changeInp.placeholder = "e.g. IDV update";
+  changeInp.placeholder = s.runningClaimMode
+    ? "Optional e.g. Name or MMV"
+    : (s.pypActiveMode ? "e.g. POI, Name, Mobile Number, MMV" : "e.g. IDV update");
   changeInp.value = appState.fieldValues.notPossibleChange || "";
   changeInp.addEventListener("input", () => {
     appState.fieldValues.notPossibleChange = changeInp.value;
@@ -3383,23 +3525,25 @@ function renderChangeNotPossibleControls(host) {
   grp.appendChild(changeLbl);
   grp.appendChild(changeInp);
 
-  const reasonLbl = document.createElement("label");
-  reasonLbl.className = "ctrl-label";
-  reasonLbl.style.marginTop = "10px";
-  reasonLbl.textContent = "Why is it not possible? (Reason)";
-  const reasonTa = document.createElement("textarea");
-  reasonTa.className = "text-input";
-  reasonTa.style.width = "100%";
-  reasonTa.style.minHeight = "80px";
-  reasonTa.style.resize = "vertical";
-  reasonTa.placeholder = "e.g. since this is a Third-Party policy, the vehicle itself is not covered...";
-  reasonTa.value = appState.fieldValues.notPossibleReason || "";
-  reasonTa.addEventListener("input", () => {
-    appState.fieldValues.notPossibleReason = reasonTa.value;
-    updatePreview();
-  });
-  grp.appendChild(reasonLbl);
-  grp.appendChild(reasonTa);
+  if (!s.pypActiveMode && !s.runningClaimMode) {
+    const reasonLbl = document.createElement("label");
+    reasonLbl.className = "ctrl-label";
+    reasonLbl.style.marginTop = "10px";
+    reasonLbl.textContent = "Why is it not possible? (Reason)";
+    const reasonTa = document.createElement("textarea");
+    reasonTa.className = "text-input";
+    reasonTa.style.width = "100%";
+    reasonTa.style.minHeight = "80px";
+    reasonTa.style.resize = "vertical";
+    reasonTa.placeholder = "e.g. since this is a Third-Party policy, the vehicle itself is not covered...";
+    reasonTa.value = appState.fieldValues.notPossibleReason || "";
+    reasonTa.addEventListener("input", () => {
+      appState.fieldValues.notPossibleReason = reasonTa.value;
+      updatePreview();
+    });
+    grp.appendChild(reasonLbl);
+    grp.appendChild(reasonTa);
+  }
 
   host.appendChild(grp);
 
@@ -3408,19 +3552,49 @@ function renderChangeNotPossibleControls(host) {
   
   const presets = [
     {
+      name: "Running Claim Mode",
+      change: "",
+      runningClaimMode: true,
+      pypActiveMode: false
+    },
+    {
+      name: "Policy Not Started (POI)",
+      change: "Period of Insurance (POI)",
+      pypActiveMode: true,
+      runningClaimMode: false
+    },
+    {
+      name: "Policy Not Started (Name)",
+      change: "Name",
+      pypActiveMode: true,
+      runningClaimMode: false
+    },
+    {
+      name: "Policy Not Started (MMV)",
+      change: "Make, Model & Variant",
+      pypActiveMode: true,
+      runningClaimMode: false
+    },
+    {
       name: "IDV (Third-Party)",
       change: "IDV update",
-      reason: "since this is a Third-Party policy, the vehicle itself is not covered, and therefore, an Insured Declared Value (IDV) is not applicable"
+      reason: "since this is a Third-Party policy, the vehicle itself is not covered, and therefore, an Insured Declared Value (IDV) is not applicable",
+      pypActiveMode: false,
+      runningClaimMode: false
     },
     {
       name: "POI (Expired)",
       change: "insurance dates (Period of Insurance) change",
-      reason: "your previous policy had already expired before the current policy was renewed. It is considered a break-in policy and was not renewed in continuity"
+      reason: "your previous policy had already expired before the current policy was renewed. It is considered a break-in policy and was not renewed in continuity",
+      pypActiveMode: false,
+      runningClaimMode: false
     },
     {
       name: "POI (Previous TP)",
       change: "insurance dates (Period of Insurance) change",
-      reason: "your previous year's policy was a Third-Party policy, and insurance dates cannot be aligned in continuity under these circumstances"
+      reason: "your previous year's policy was a Third-Party policy, and insurance dates cannot be aligned in continuity under these circumstances",
+      pypActiveMode: false,
+      runningClaimMode: false
     }
   ];
 
@@ -3434,10 +3608,12 @@ function renderChangeNotPossibleControls(host) {
     btn.className = "chip-opt";
     btn.textContent = p.name;
     btn.addEventListener("click", () => {
+      s.pypActiveMode = !!p.pypActiveMode;
       appState.fieldValues.notPossibleChange = p.change;
-      appState.fieldValues.notPossibleReason = p.reason;
-      changeInp.value = p.change;
-      reasonTa.value = p.reason;
+      if (p.reason) {
+        appState.fieldValues.notPossibleReason = p.reason;
+      }
+      renderControls();
       updatePreview();
     });
     btnWrap.appendChild(btn);
