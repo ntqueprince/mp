@@ -141,7 +141,7 @@ function formatIndianNumber(numStr, decimals) {
 /* =========================================================
    DATE HELPERS
    ========================================================= */
-const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 function formatDateDDMonthYYYY(date) {
   const d = String(date.getDate()).padStart(2, "0");
   const m = MONTHS[date.getMonth()];
@@ -215,7 +215,7 @@ const mailTemplates = [
     defaultSelections: {
       greeting: true,
       reference: true,
-      forwarded: true,
+      forwarded: false,
       documents: false,
       updateDate: true,
       tat: true,
@@ -802,7 +802,7 @@ const mailTemplates = [
     defaultSelections: {
       greeting: true,
       reference: true,
-      forwarded: true,
+      forwarded: false,
       documents: false,
       tat: true,
       showExactDate: true
@@ -932,18 +932,18 @@ function buildPreview() {
     baseText = tpl.body;
   } else {
     switch (tpl.id) {
-      case "blank_mail":      baseText = buildBlankMail(); break;
-      case "docs_only":       baseText = buildDocsOnly(); break;
+      case "blank_mail": baseText = buildBlankMail(); break;
+      case "docs_only": baseText = buildDocsOnly(); break;
       case "gatepass_national_cancellation": baseText = buildGatepassNationalCancellation(); break;
-      case "docs_required":   baseText = buildDocsRequired(); break;
-      case "rf":              baseText = buildRF(); break;
-      case "sf_payment":      baseText = buildSF(); break;
-      case "refund_done":     baseText = buildRefund(); break;
-      case "cancellation":    baseText = buildCancellation(); break;
+      case "docs_required": baseText = buildDocsRequired(); break;
+      case "rf": baseText = buildRF(); break;
+      case "sf_payment": baseText = buildSF(); break;
+      case "refund_done": baseText = buildRefund(); break;
+      case "cancellation": baseText = buildCancellation(); break;
       case "insured_person_change": baseText = buildInsuredPersonChange(); break;
-      case "vahan_updated":   baseText = buildVahanUpdated(); break;
+      case "vahan_updated": baseText = buildVahanUpdated(); break;
       case "renewal_contact": baseText = buildRenewal(); break;
-      case "tat_24hr":        baseText = buildTat24Hr(); break;
+      case "tat_24hr": baseText = buildTat24Hr(); break;
       case "tat_already_shared": baseText = buildTatAlreadyShared(); break;
       case "ownership_transfer": baseText = buildOwnershipTransfer(); break;
       case "video_inspection": baseText = buildVideoInspection(); break;
@@ -1119,7 +1119,7 @@ function buildRF() {
 
   if (s.greeting) parts.push("Greetings from PolicyBazaar.com!");
   if (s.reference) parts.push("This is with reference to your request.");
-  
+
   if (s.forwarded) {
     if (s.concernedTeam) {
       parts.push("We would like to inform you that we have forwarded your request to the insurer for the necessary update.");
@@ -1257,8 +1257,8 @@ function buildRefund() {
   const days = appState.workingDays || 7;
   const unit = days === 1 ? "working day" : "working days";
 
-  const accountWording = s.neftRefund 
-    ? "the bank account details shared by you" 
+  const accountWording = s.neftRefund
+    ? "the bank account details shared by you"
     : "your source account";
 
   return [
@@ -1473,7 +1473,7 @@ function buildCancellation() {
 
   const isMayBe = appState.sectionSelections.alternateMayBe;
   const includeBundle = appState.sectionSelections.includeBundle;
-  const shortPolicyName = includeBundle 
+  const shortPolicyName = includeBundle
     ? "Alternate / Bundle policy"
     : "Alternate policy";
   const policyName = `${shortPolicyName} of the same vehicle`;
@@ -1695,9 +1695,9 @@ function buildClosure() {
   if (manual) {
     const cleanLower = manual.toLowerCase();
     const isMapped = [
-      "ncb", "no claim bonus", "address", "addr", "nominee", "cancellation", "cancel", 
-      "mobile", "phone", "contact", "number", "email", "mail", "name", "owner name", 
-      "chassis", "engine", "reg", "registration", "vehicle number", "model", "variant", 
+      "ncb", "no claim bonus", "address", "addr", "nominee", "cancellation", "cancel",
+      "mobile", "phone", "contact", "number", "email", "mail", "name", "owner name",
+      "chassis", "engine", "reg", "registration", "vehicle number", "model", "variant",
       "make", "pyp", "previous year", "previous policy", "gender", "dob", "date of birth",
       "third party", "tp", "cpa", "ot", "ownership transfer", "ownership", "transfer",
       "claim", "inspection", "video", "charges"
@@ -1879,7 +1879,7 @@ function buildSbiOt() {
     for (const d of formattedDocs) {
       docBlock += `\n\u2022 ${d}`;
     }
-    
+
     docBlock += "\n\nNew Owner Details:\n" +
       "\u2022 Insured Name\n" +
       "\u2022 Address\n" +
@@ -1890,7 +1890,7 @@ function buildSbiOt() {
       "\u2022 Nominee Name\n" +
       "\u2022 Nominee DOB\n" +
       "\u2022 Nominee Relationship with the Insured";
-      
+
     parts.push("", docBlock);
   }
 
@@ -2119,18 +2119,18 @@ function renderControls() {
   }
 
   switch (tpl.id) {
-    case "blank_mail":      renderBlankMailControls(host); break;
-    case "docs_only":       renderDocsOnlyControls(host); break;
+    case "blank_mail": renderBlankMailControls(host); break;
+    case "docs_only": renderDocsOnlyControls(host); break;
     case "gatepass_national_cancellation": renderGatepassNationalCancellationControls(host); break;
-    case "docs_required":   renderDocsRequiredControls(host); break;
-    case "rf":              renderRFControls(host); break;
-    case "sf_payment":      renderSFControls(host); break;
-    case "refund_done":     renderRefundControls(host); break;
-    case "cancellation":    renderCancellationControls(host); break;
+    case "docs_required": renderDocsRequiredControls(host); break;
+    case "rf": renderRFControls(host); break;
+    case "sf_payment": renderSFControls(host); break;
+    case "refund_done": renderRefundControls(host); break;
+    case "cancellation": renderCancellationControls(host); break;
     case "insured_person_change": renderInsuredPersonChangeControls(host); break;
-    case "vahan_updated":   renderVahanUpdatedControls(host); break;
+    case "vahan_updated": renderVahanUpdatedControls(host); break;
     case "renewal_contact": renderRenewalControls(host); break;
-    case "tat_24hr":        renderTat24HrControls(host); break;
+    case "tat_24hr": renderTat24HrControls(host); break;
     case "tat_already_shared": renderTatAlreadySharedControls(host); break;
     case "ownership_transfer": renderOwnershipTransferControls(host); break;
     case "video_inspection": renderVideoInspectionControls(host); break;
@@ -2180,11 +2180,11 @@ function renderExtraNoteControls(host) {
 
 function renderBlankMailControls(host) {
   const grp = createGroup("Compose Mail");
-  
+
   const lbl = document.createElement("label");
   lbl.className = "ctrl-label";
   lbl.textContent = "Your Custom Message";
-  
+
   const ta = document.createElement("textarea");
   ta.className = "text-area";
   ta.placeholder = "Type your custom message here...";
@@ -2194,7 +2194,7 @@ function renderBlankMailControls(host) {
     appState.manualText = ta.value;
     updatePreview();
   });
-  
+
   grp.appendChild(lbl);
   grp.appendChild(ta);
   host.appendChild(grp);
@@ -2589,7 +2589,7 @@ function renderRFControls(host) {
         const chipSel = document.createElement("div");
         chipSel.className = "chip-select";
         chipSel.style.marginTop = "8px";
-        
+
         const predef = [5, 7, 10];
         const isCustom = !predef.includes(appState.tatDays);
 
@@ -2693,7 +2693,7 @@ function renderKycAddressToggle(parentEl) {
   const s = appState.sectionSelections;
   const target = "ADDRESS PROOF REFLECTING THE EXACT SAME ADDRESS TO BE UPDATED";
   const hasAddr = appState.documents.includes(target);
-  
+
   const existing = parentEl.querySelector(".kyc-toggle-wrap");
   if (existing) existing.remove();
 
@@ -2736,7 +2736,7 @@ function renderDocChips(host) {
     chip.appendChild(rm);
     host.appendChild(chip);
   });
-  
+
   if (host.parentElement) {
     renderKycAddressToggle(host.parentElement);
   }
@@ -3080,13 +3080,13 @@ function renderTat24HrControls(host) {
     typeLbl.className = "ctrl-label";
     typeLbl.style.marginTop = "10px";
     typeLbl.textContent = "Day Type";
-    
+
     const typeWrap = document.createElement("div");
     typeWrap.className = "chip-select";
     typeWrap.style.marginTop = "6px";
-    
+
     const customType = appState.fieldValues.tatCustomType || "working";
-    
+
     const optWorking = document.createElement("button");
     optWorking.type = "button";
     optWorking.className = "chip-opt" + (customType === "working" ? " active" : "");
@@ -3096,7 +3096,7 @@ function renderTat24HrControls(host) {
       renderControls();
       updatePreview();
     });
-    
+
     const optNormal = document.createElement("button");
     optNormal.type = "button";
     optNormal.className = "chip-opt" + (customType === "normal" ? " active" : "");
@@ -3106,7 +3106,7 @@ function renderTat24HrControls(host) {
       renderControls();
       updatePreview();
     });
-    
+
     typeWrap.appendChild(optWorking);
     typeWrap.appendChild(optNormal);
     grp.appendChild(typeLbl);
@@ -3297,7 +3297,7 @@ function renderOwnershipTransferControls(host) {
 /* ---------- 2W VIDEO INSPECTION Controls ---------- */
 function renderTwoWVideoInspectionControls(host) {
   const s = appState.sectionSelections;
-  
+
   const grp = createGroup("Options");
   grp.appendChild(createToggleRow(
     "Re-inspection Note",
@@ -3322,7 +3322,7 @@ function renderTwoWVideoInspectionControls(host) {
 
   if (s.reinspection) {
     const reasonGrp = createGroup("Re-inspection Details");
-    
+
     const label = document.createElement("label");
     label.className = "ctrl-label";
     label.textContent = "Reason for asking again";
@@ -3348,7 +3348,7 @@ function renderTwoWVideoInspectionControls(host) {
 /* ---------- 4W VIDEO INSPECTION Controls ---------- */
 function renderVideoInspectionControls(host) {
   const s = appState.sectionSelections;
-  
+
   const grp = createGroup("Options");
   grp.appendChild(createToggleRow(
     "Re-inspection Note",
@@ -3373,7 +3373,7 @@ function renderVideoInspectionControls(host) {
 
   if (s.reinspection) {
     const reasonGrp = createGroup("Re-inspection Details");
-    
+
     const label = document.createElement("label");
     label.className = "ctrl-label";
     label.textContent = "Reason for asking again";
@@ -3499,8 +3499,8 @@ function renderChangeNotPossibleControls(host) {
   ));
   host.appendChild(modeGrp);
 
-  const groupTitle = s.runningClaimMode 
-    ? "Claim & Detail Options" 
+  const groupTitle = s.runningClaimMode
+    ? "Claim & Detail Options"
     : (s.pypActiveMode ? "Correction Details" : "Custom Rejection Details");
 
   const grp = createGroup(groupTitle);
@@ -3510,7 +3510,7 @@ function renderChangeNotPossibleControls(host) {
   changeLbl.textContent = s.runningClaimMode
     ? "Detail requested (Optional, e.g. Name, MMV, POI)"
     : (s.pypActiveMode ? "Detail to correct (e.g. POI, Name, Mobile Number, MMV)" : "What change is not possible? (e.g. IDV update)");
-  
+
   const changeInp = document.createElement("input");
   changeInp.type = "text";
   changeInp.className = "text-input";
@@ -3549,7 +3549,7 @@ function renderChangeNotPossibleControls(host) {
 
   // Quick Presets
   const presetGrp = createGroup("Quick Presets");
-  
+
   const presets = [
     {
       name: "Running Claim Mode",
@@ -3705,7 +3705,7 @@ function renderSbiOtControls(host) {
   // Shortfall payment inputs
   if (s.shortfallPayment) {
     const paymentGrp = createGroup("Payment Settings");
-    
+
     const amtLbl = document.createElement("label");
     amtLbl.className = "ctrl-label";
     amtLbl.textContent = "Shortfall Amount (Rs.)";
@@ -3916,7 +3916,7 @@ function renderMParivahanMailControls(host) {
       tatGrp.appendChild(exactToggle);
     } else if (mode === "custom") {
       const customType = appState.fieldValues.mParivahanCustomType || "working";
-      
+
       const typeLbl = document.createElement("label");
       typeLbl.className = "ctrl-label";
       typeLbl.style.marginTop = "10px";
@@ -4128,7 +4128,7 @@ function selectTemplate(id) {
   // Init section selections
   if (tpl.id === "rf") {
     appState.sectionSelections = {
-      greeting: true, reference: true, forwarded: true,
+      greeting: true, reference: true, forwarded: false,
       documents: false, updateDate: true, tat: true,
       charges: true, originalCopy: true, ncbNote: false
     };
@@ -4138,7 +4138,7 @@ function selectTemplate(id) {
     appState.sectionSelections = {
       greeting: true,
       reference: true,
-      forwarded: true,
+       forwarded: false,
       documents: false,
       tat: true,
       showExactDate: true
@@ -4420,7 +4420,7 @@ async function togglePiP() {
 
 function closePiP() {
   if (pipWindow && !pipWindow.closed) {
-    try { pipWindow.close(); } catch (e) {}
+    try { pipWindow.close(); } catch (e) { }
   }
 }
 
@@ -4464,7 +4464,7 @@ function enableShellDrag() {
   });
   header.addEventListener("pointerup", e => {
     dragging = false;
-    try { header.releasePointerCapture(e.pointerId); } catch (err) {}
+    try { header.releasePointerCapture(e.pointerId); } catch (err) { }
   });
 }
 
@@ -4486,7 +4486,7 @@ function initMiniDrag() {
         appState.miniPos = p;
       }
     }
-  } catch (e) {}
+  } catch (e) { }
 
   mini.addEventListener("pointerdown", e => {
     dragging = true;
@@ -4519,9 +4519,9 @@ function initMiniDrag() {
   mini.addEventListener("pointerup", e => {
     dragging = false;
     mini.classList.remove("dragging");
-    try { mini.releasePointerCapture(e.pointerId); } catch (err) {}
+    try { mini.releasePointerCapture(e.pointerId); } catch (err) { }
     if (appState.miniPos) {
-      try { sessionStorage.setItem("pbmh_mini_pos", JSON.stringify(appState.miniPos)); } catch (err) {}
+      try { sessionStorage.setItem("pbmh_mini_pos", JSON.stringify(appState.miniPos)); } catch (err) { }
     }
     if (!moved) restoreFromMini();
   });
