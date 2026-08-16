@@ -25,7 +25,8 @@ const appState = {
   extraNoteText: "",            // text content for extra note
   miniPos: null,
   isFloating: false,
-  isPiPActive: false
+  isPiPActive: false,
+  emailFolderOpen: false
 };
 
 /* =========================================================
@@ -164,6 +165,46 @@ const mailTemplates = [
     header: "BLANK MAIL",
     description: "Compose custom mail with default greeting and reference",
     keywords: ["blank", "custom", "manual", "write", "empty", "compose", "blank mail"],
+    type: "dynamic"
+  },
+  {
+    id: "national_double_deduction_email",
+    header: "NATIONAL DOUBLE DEDUCTION",
+    category: "EMAIL",
+    description: "Refund approval mail with settlement sheet attachment",
+    keywords: ["national double deduction", "double deduction", "settlement sheet", "duplicate payment", "refund approval"],
+    type: "dynamic"
+  },
+  {
+    id: "four_w_order_id_email",
+    header: "4W ORDER ID - CHANDAN",
+    category: "EMAIL",
+    description: "Request issued booking confirmation with BMS PG screenshot",
+    keywords: ["4w order id", "chandan", "bms pg", "tech pendency", "issued booking", "policy issued"],
+    type: "dynamic"
+  },
+  {
+    id: "bajaj_excess_refund_email",
+    header: "BAJAJ EXCESS REFUND",
+    category: "EMAIL",
+    description: "Bajaj excess amount approval with settlement sheet",
+    keywords: ["bajaj", "bajaj excess refund", "excess refund", "settlement sheet", "excess amount approval"],
+    type: "dynamic"
+  },
+  {
+    id: "national_excess_refund_email",
+    header: "NATIONAL EXCESS REFUND",
+    category: "EMAIL",
+    description: "Excess refund approval with settlement details",
+    keywords: ["national excess", "excess refund approval", "utr", "settlement date", "premium"],
+    type: "dynamic"
+  },
+  {
+    id: "bajaj_double_deduction_email",
+    header: "BAJAJ DOUBLE DEDUCTION",
+    category: "EMAIL",
+    description: "Bajaj double deduction refund approval with settlement sheet",
+    keywords: ["bajaj double deduction", "double deduction refund", "same policy refund", "bajaj refund"],
     type: "dynamic"
   },
   /* ---------- DOCS ONLY ---------- */
@@ -845,9 +886,12 @@ function searchTemplates(query) {
   const results = [];
   for (const tpl of mailTemplates) {
     let score = 0;
+    const categoryNorm = normalizeSearch(tpl.category || "");
     const headerNorm = normalizeSearch(tpl.header);
     const descNorm = normalizeSearch(tpl.description);
 
+    if (categoryNorm === q) score += 800;
+    if (categoryNorm.startsWith(q)) score += 250;
     // Exact header match
     if (headerNorm === q) score += 1000;
     // Header starts with
@@ -870,7 +914,7 @@ function searchTemplates(query) {
     // Word-by-word matching (each query word must appear somewhere)
     const qWords = q.split(" ").filter(w => w.length >= 2);
     if (qWords.length > 1) {
-      const haystack = headerNorm + " " + descNorm + " " + tpl.keywords.map(normalizeSearch).join(" ");
+    const haystack = normalizeSearch(tpl.category || "") + " " + headerNorm + " " + descNorm + " " + tpl.keywords.map(normalizeSearch).join(" ");
       let allWordsMatch = true;
       for (const w of qWords) {
         if (!haystack.includes(w)) { allWordsMatch = false; break; }
@@ -880,7 +924,7 @@ function searchTemplates(query) {
 
     // Common typo tolerance for very short queries (single character difference)
     if (score === 0 && q.length >= 4) {
-      const haystack = headerNorm + " " + tpl.keywords.map(normalizeSearch).join(" ");
+      const haystack = normalizeSearch(tpl.category || "") + " " + headerNorm + " " + tpl.keywords.map(normalizeSearch).join(" ");
       if (fuzzyContains(haystack, q)) score += 20;
     }
 
@@ -933,6 +977,13 @@ function buildPreview() {
   } else {
     switch (tpl.id) {
       case "blank_mail": baseText = buildBlankMail(); break;
+      case "national_double_deduction_email": baseText = buildNationalDoubleDeductionEmail(); break;
+      case "four_w_order_id_email": baseText = buildFourWOrderIdEmail(); break;
+      case "bajaj_excess_refund_email": baseText = buildBajajExcessRefundEmail(); break;
+      case "national_excess_refund_email": baseText = buildNationalExcessRefundEmail(); break;
+      case "bajaj_double_deduction_email": baseText = buildBajajDoubleDeductionEmail(); break;
+      case "double_deduction_email": baseText = buildDoubleDeductionEmail(); break;
+      case "excess_amount_email": baseText = buildExcessAmountEmail(); break;
       case "docs_only": baseText = buildDocsOnly(); break;
       case "gatepass_national_cancellation": baseText = buildGatepassNationalCancellation(); break;
       case "docs_required": baseText = buildDocsRequired(); break;
@@ -993,6 +1044,208 @@ function buildBlankMail() {
   }
 
   return parts.join("\n");
+}
+
+function buildNationalDoubleDeductionEmail() {
+  const f = appState.fieldValues;
+  const amount = (f.ndAmount || "").trim();
+  const orderId = (f.ndOrderId || "").trim();
+  const policyNumber = (f.ndPolicyNumber || "").trim();
+  const bookingId = (f.ndBookingId || "").trim();
+  const signature = (f.ndSignature || "Shivang Jaiswal").trim();
+  return [
+    "To: Rajendra Sir",
+    "CC: Subhan Sir, Meraj Babu",
+    `Subject: Double Deduction : ${policyNumber} :: ${bookingId}`,
+    "",
+    "Hi Rajendra Sir,",
+    "",
+    `Kindly help with the approval of Rs. ${amount}/- because the payment was deducted twice.`,
+    `Order Id: ${orderId}`,
+    `Booking ID: ${bookingId}`,
+    "",
+    "PFA",
+    "Attachment: Settlement Sheet (Required)",
+    "Internal Status: PB Pendency",
+    "",
+    "Regards",
+    signature
+  ].join("\n");
+}
+
+function buildFourWOrderIdEmail() {
+  const f = appState.fieldValues;
+  const policyNumber = (f.fwPolicyNumber || "").trim();
+  const bookingId = (f.fwBookingId || "").trim();
+  const signature = (f.fwSignature || "Shivang Jaiswal").trim();
+  return [
+    "To: Chandan Singh Adhikari",
+    "CC: Subhan Sir",
+    `Subject: Double Deduction : ${policyNumber} :: ${bookingId}`,
+    "",
+    "Hi Chandan Sir,",
+    "",
+    "Please confirm the order ID against which the policy has been issued.",
+    "",
+    "PFA",
+    "Attachment: BMS PG Screenshot (Required)",
+    "Internal Status: Tech Pendency",
+    "",
+    "Regards",
+    signature
+  ].join("\n");
+}
+
+function buildBajajExcessRefundEmail() {
+  const f = appState.fieldValues;
+  const to = (f.bjTo || "Shweta").trim();
+  const amount = (f.bjAmount || "").trim();
+  const bookingId = (f.bjBookingId || "").trim();
+  const signature = (f.bjSignature || "Shivang Jaiswal").trim();
+  return [
+    `To: ${to}`,
+    "CC: Subhan Sir",
+    `Subject: Excess amount for Booking ID: ${bookingId}`,
+    "",
+    `Hi ${to},`,
+    "",
+    `Could you please approve the excess amount of Rs. ${amount} for Booking ID ${bookingId}?`,
+    "",
+    "PFA",
+    "Attachment: Settlement Sheet (Required)",
+    "Internal Status: PB Pendency",
+    "",
+    "Regards,",
+    signature
+  ].join("\n");
+}
+
+function buildNationalExcessRefundEmail() {
+  const f = appState.fieldValues;
+  const amount = (f.neAmount || "").trim();
+  const premium = (f.nePremium || "").trim();
+  const totalPremium = (f.neTotalPremium || "").trim();
+  const orderNo = (f.neOrderNo || "").trim();
+  const settlementDate = (f.neSettlementDate || "").trim();
+  const utr = (f.neUtr || "").trim();
+  const bookingId = (f.neBookingId || "").trim();
+  const signature = (f.neSignature || "Shivang Jaiswal").trim();
+  return [
+    "To: Rajendra Sir",
+    "CC: Subhan Sir, Geetanjali",
+    `Subject: Excess Refund Approval Required : ${orderNo}`,
+    "",
+    "Hi Rajendra Sir,",
+    "",
+    `Please process the excess refund of Rs. ${amount}/- as the policy has been issued with premium amount Rs. ${premium}/- and total premium paid by the customer is Rs. ${totalPremium}/-.`,
+    "",
+    `Excess Refund Amount: Rs. ${amount}`,
+    `Order No.: ${orderNo}`,
+    `Settlement Date: ${settlementDate}`,
+    `UTR No.: ${utr}`,
+    `Booking ID: ${bookingId}`,
+    "",
+    "PFA",
+    "Attachment: Settlement Sheet (Required)",
+    "Internal Status: PB Pendency",
+    "",
+    "Regards",
+    signature
+  ].join("\n");
+}
+
+function buildBajajDoubleDeductionEmail() {
+  const f = appState.fieldValues;
+  const policyNumber = (f.bdPolicyNumber || "").trim();
+  const bookingId = (f.bdBookingId || "").trim();
+  const amount = (f.bdAmount || "").trim();
+  const orderNo = (f.bdOrderNo || "").trim();
+  const signature = (f.bdSignature || "Shivang Jaiswal").trim();
+  return [
+    "To: Shweta, Bajaj General Insurance",
+    "CC: Subhan Sir",
+    `Subject: Double Deduction :: ${policyNumber} :: ${bookingId}`,
+    "",
+    "Hi Shweta Ma'am,",
+    "",
+    `Please approve the refund of Rs. ${amount}.00 due to a double deduction on the same policy.`,
+    `Order No.: ${orderNo}`,
+    "",
+    "PFA",
+    "Attachment: Settlement Sheet (Required)",
+    "Internal Status: PB Pendency",
+    "",
+    "Regards,",
+    signature
+  ].join("\n");
+}
+
+/* ---------- EMAIL / DOUBLE DEDUCTION ---------- */
+function buildDoubleDeductionEmail() {
+  const f = appState.fieldValues;
+  const value = key => (f[key] || "").trim();
+  const mode = f.doubleDeductionMode || "approval";
+  const to = value("ddTo") || (mode === "proposal_request" ? "Chandan Singh Adhikari" : "Rajendra Sir");
+  const cc = mode === "proposal_request" ? "Subhan Sir" : "Subhan Sir, Meraj Babu";
+  const bookingId = value("ddBookingId");
+  const policyNumber = value("ddPolicyNumber");
+  const amount = value("ddAmount");
+  const orderId = value("ddOrderId");
+  const signature = value("ddSignature");
+
+  const subject = `Double Deduction : ${policyNumber} :: ${bookingId}`;
+  if (mode === "proposal_request") {
+    return [
+      `To: ${to}`,
+      `CC: ${cc}`,
+      `Subject: ${subject}`,
+      "",
+      "Hi Chandan Sir,",
+      "",
+      "Please confirm the booking ID against which the policy has been issued.",
+      "",
+      "PFA",
+      "",
+      "Regards",
+      signature
+    ].join("\n");
+  }
+
+  return [
+    `To: ${to}`,
+    `CC: ${cc}`,
+    `Subject: ${subject}`,
+    "",
+    "Hi Rajendra Sir,",
+    "",
+    `Kindly help with the approval of Rs. ${amount}/- as the payment was deducted twice.`,
+    `Order Id: ${orderId}`,
+    "",
+    "PFA",
+    "",
+    "Regards",
+    signature
+  ].join("\n");
+}
+
+function buildExcessAmountEmail() {
+  const f = appState.fieldValues;
+  const to = (f.exTo || "Shweta").trim();
+  const amount = (f.exAmount || "").trim();
+  const bookingId = (f.exBookingId || "").trim();
+  const signature = (f.exSignature || "Shivang Jaiswal").trim();
+  return [
+    `To: ${to}`,
+    "CC: Subhan Sir",
+    `Subject: Excess amount for Booking ID: ${bookingId}`,
+    "",
+    `Hi ${to},`,
+    "",
+    `Could you please approve the excess amount of Rs. ${amount} for Booking ID ${bookingId}?`,
+    "",
+    "Regards,",
+    signature
+  ].join("\n");
 }
 
 /* ---------- GATEPASS / NATIONAL CANCELLATION ---------- */
@@ -2096,6 +2349,7 @@ function renderControls() {
   const tpl = getActiveTemplate();
 
   if (!tpl) {
+    content.classList.remove("email-active");
     empty.style.display = "";
     content.style.display = "none";
     renderQuickTemplates();
@@ -2103,8 +2357,14 @@ function renderControls() {
   }
   empty.style.display = "none";
   content.style.display = "";
+  content.classList.toggle("email-active", tpl.category === "EMAIL");
 
-  document.getElementById("activeTplHeader").textContent = tpl.header;
+  const activeHeader = tpl.id === "double_deduction_email" && appState.fieldValues.doubleDeductionMode === "proposal_request"
+    ? "4W FAKE PROPOSAL REQUEST"
+    : tpl.header;
+  document.getElementById("activeTplHeader").textContent = tpl.category === "EMAIL" && activeHeader === "EMAIL"
+    ? "EMAIL"
+    : (tpl.category ? `${tpl.category} / ${activeHeader}` : activeHeader);
 
   const host = document.getElementById("dynamicControls");
   host.innerHTML = "";
@@ -2120,6 +2380,13 @@ function renderControls() {
 
   switch (tpl.id) {
     case "blank_mail": renderBlankMailControls(host); break;
+    case "national_double_deduction_email": renderNationalDoubleDeductionControls(host); break;
+    case "four_w_order_id_email": renderFourWOrderIdControls(host); break;
+    case "bajaj_excess_refund_email": renderBajajExcessRefundControls(host); break;
+    case "national_excess_refund_email": renderNationalExcessRefundControls(host); break;
+    case "bajaj_double_deduction_email": renderBajajDoubleDeductionControls(host); break;
+    case "double_deduction_email": renderDoubleDeductionEmailControls(host); break;
+    case "excess_amount_email": renderExcessAmountEmailControls(host); break;
     case "docs_only": renderDocsOnlyControls(host); break;
     case "gatepass_national_cancellation": renderGatepassNationalCancellationControls(host); break;
     case "docs_required": renderDocsRequiredControls(host); break;
@@ -2197,6 +2464,223 @@ function renderBlankMailControls(host) {
 
   grp.appendChild(lbl);
   grp.appendChild(ta);
+  host.appendChild(grp);
+}
+
+function renderNationalDoubleDeductionControls(host) {
+  const f = appState.fieldValues;
+  const grp = createGroup("National Double Deduction");
+  const fields = [
+    ["ndPolicyNumber", "Policy Number (Subject)", "Enter policy number"],
+    ["ndBookingId", "Booking ID (Subject)", "Enter booking ID"],
+    ["ndAmount", "Amount", "e.g. 889.00"],
+    ["ndOrderId", "Order ID", "Enter order ID"],
+    ["ndSignature", "Your Name", "Shivang Jaiswal"]
+  ];
+  fields.forEach(([key, label, placeholder]) => {
+    const lbl = document.createElement("label");
+    lbl.className = "ctrl-label";
+    lbl.style.marginTop = "10px";
+    lbl.textContent = label;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "text-input";
+    input.placeholder = placeholder;
+    input.value = f[key] || (key === "ndSignature" ? "Shivang Jaiswal" : "");
+    input.addEventListener("input", () => {
+      f[key] = input.value;
+      updatePreview();
+    });
+    grp.appendChild(lbl);
+    grp.appendChild(input);
+  });
+  host.appendChild(grp);
+}
+
+function renderFourWOrderIdControls(host) {
+  const f = appState.fieldValues;
+  const grp = createGroup("4W Order ID Details");
+  const fields = [
+    ["fwPolicyNumber", "Policy Number (Subject)", "Enter policy number"],
+    ["fwBookingId", "Booking ID (Subject)", "Enter booking ID"],
+    ["fwSignature", "Your Name", "Shivang Jaiswal"]
+  ];
+  fields.forEach(([key, label, placeholder]) => {
+    const lbl = document.createElement("label");
+    lbl.className = "ctrl-label";
+    lbl.style.marginTop = "10px";
+    lbl.textContent = label;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "text-input";
+    input.placeholder = placeholder;
+    input.value = f[key] || (key === "fwSignature" ? "Shivang Jaiswal" : "");
+    input.addEventListener("input", () => {
+      f[key] = input.value;
+      updatePreview();
+    });
+    grp.appendChild(lbl);
+    grp.appendChild(input);
+  });
+  host.appendChild(grp);
+}
+
+function renderBajajExcessRefundControls(host) {
+  const f = appState.fieldValues;
+  const grp = createGroup("Bajaj Excess Refund Details");
+  const fields = [
+    ["bjTo", "To / Name", "e.g. Shweta"],
+    ["bjAmount", "Excess Amount", "e.g. 568"],
+    ["bjBookingId", "Booking ID", "Enter booking ID"],
+    ["bjSignature", "Your Name", "Shivang Jaiswal"]
+  ];
+  fields.forEach(([key, label, placeholder]) => {
+    const lbl = document.createElement("label");
+    lbl.className = "ctrl-label";
+    lbl.style.marginTop = "10px";
+    lbl.textContent = label;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "text-input";
+    input.placeholder = placeholder;
+    input.value = f[key] || (key === "bjTo" ? "Shweta" : key === "bjSignature" ? "Shivang Jaiswal" : "");
+    input.addEventListener("input", () => {
+      f[key] = input.value;
+      updatePreview();
+    });
+    grp.appendChild(lbl);
+    grp.appendChild(input);
+  });
+  host.appendChild(grp);
+}
+
+function renderNationalExcessRefundControls(host) {
+  const f = appState.fieldValues;
+  renderEmailFieldGroup(host, "National Excess Refund Details", [
+    ["neAmount", "Excess Refund Amount", "e.g. 163"],
+    ["nePremium", "Policy Premium", "e.g. 8900"],
+    ["neTotalPremium", "Total Premium Paid", "e.g. 9063"],
+    ["neOrderNo", "Order No.", "Enter order number"],
+    ["neSettlementDate", "Settlement Date", "e.g. 11-Aug-2026"],
+    ["neUtr", "UTR No.", "Enter UTR number"],
+    ["neBookingId", "Booking ID", "Enter booking ID"],
+    ["neSignature", "Your Name", "Shivang Jaiswal"]
+  ], f);
+}
+
+function renderBajajDoubleDeductionControls(host) {
+  const f = appState.fieldValues;
+  renderEmailFieldGroup(host, "Bajaj Double Deduction Details", [
+    ["bdPolicyNumber", "Policy Number (Subject)", "Enter policy number"],
+    ["bdBookingId", "Booking ID (Subject)", "Enter booking ID"],
+    ["bdAmount", "Refund Amount", "e.g. 4415"],
+    ["bdOrderNo", "Order No.", "Enter order number"],
+    ["bdSignature", "Your Name", "Shivang Jaiswal"]
+  ], f);
+}
+
+function renderEmailFieldGroup(host, title, fields, values) {
+  const grp = createGroup(title);
+  fields.forEach(([key, label, placeholder]) => {
+    const lbl = document.createElement("label");
+    lbl.className = "ctrl-label";
+    lbl.style.marginTop = "10px";
+    lbl.textContent = label;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "text-input";
+    input.placeholder = placeholder;
+    input.value = values[key] || (key.endsWith("Signature") ? "Shivang Jaiswal" : "");
+    input.addEventListener("input", () => { values[key] = input.value; updatePreview(); });
+    grp.appendChild(lbl);
+    grp.appendChild(input);
+  });
+  host.appendChild(grp);
+}
+
+function renderDoubleDeductionEmailControls(host) {
+  const f = appState.fieldValues;
+  const modeGrp = createGroup("Email Type");
+  const modeWrap = document.createElement("div");
+  modeWrap.className = "chip-select";
+  [
+    ["approval", "Refund Approval Mail"],
+    ["proposal_request", "4W Proposal Request"]
+  ].forEach(([value, label]) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "chip-opt" + ((f.doubleDeductionMode || "approval") === value ? " active" : "");
+    btn.textContent = label;
+    btn.addEventListener("click", () => {
+      f.doubleDeductionMode = value;
+      renderControls();
+      updatePreview();
+    });
+    modeWrap.appendChild(btn);
+  });
+  modeGrp.appendChild(modeWrap);
+  host.appendChild(modeGrp);
+
+  const grp = createGroup("Case Details");
+  const fields = [
+    ["ddPolicyNumber", "Policy Number (Subject)", "Enter policy number"],
+    ["ddBookingId", "Booking ID (Subject)", "Enter booking ID"]
+  ];
+
+  if ((f.doubleDeductionMode || "approval") === "approval") {
+    fields.push(
+      ["ddAmount", "Amount", "e.g. 889.00"],
+      ["ddOrderId", "Order ID", "Enter order ID"]
+    );
+  }
+  fields.push(["ddSignature", "Your Name", "Enter your name"]);
+
+  fields.forEach(([key, label, placeholder]) => {
+    const lbl = document.createElement("label");
+    lbl.className = "ctrl-label";
+    lbl.style.marginTop = "10px";
+    lbl.textContent = label;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "text-input";
+    input.placeholder = placeholder;
+    input.value = f[key] || "";
+    input.addEventListener("input", () => {
+      f[key] = input.value;
+      updatePreview();
+    });
+    grp.appendChild(lbl);
+    grp.appendChild(input);
+  });
+  host.appendChild(grp);
+}
+
+function renderExcessAmountEmailControls(host) {
+  const f = appState.fieldValues;
+  const grp = createGroup("Email Details");
+  const fields = [
+    ["exTo", "To / Name", "e.g. Shweta"],
+    ["exAmount", "Excess Amount", "e.g. 568"],
+    ["exBookingId", "Booking ID", "Enter booking ID"],
+    ["exSignature", "Your Name", "Shivang Jaiswal"]
+  ];
+  fields.forEach(([key, label, placeholder]) => {
+    const lbl = document.createElement("label");
+    lbl.className = "ctrl-label";
+    lbl.style.marginTop = "10px";
+    lbl.textContent = label;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "text-input";
+    input.placeholder = placeholder;
+    input.value = f[key] || (key === "exTo" ? "Shweta" : key === "exSignature" ? "Shivang Jaiswal" : "");
+    input.addEventListener("input", () => {
+      f[key] = input.value;
+      updatePreview();
+    });
+    grp.appendChild(lbl);
+    grp.appendChild(input);
+  });
   host.appendChild(grp);
 }
 
@@ -2374,14 +2858,85 @@ function renderDocsOnlyControls(host) {
 function renderQuickTemplates() {
   const host = document.getElementById("quickTemplates");
   host.innerHTML = "";
+  const groups = new Map();
   mailTemplates.forEach(t => {
-    const chip = document.createElement("button");
-    chip.className = "quick-tpl-chip";
-    chip.type = "button";
-    chip.textContent = t.header;
-    chip.addEventListener("click", () => selectTemplate(t.id));
-    host.appendChild(chip);
+    const group = t.category || "MAIL TEMPLATES";
+    if (!groups.has(group)) groups.set(group, []);
+    groups.get(group).push(t);
   });
+  if (!groups.has("EMAIL")) groups.set("EMAIL", []);
+  const orderedGroups = [...groups.keys()].sort((a, b) => {
+    if (a === "EMAIL") return -1;
+    if (b === "EMAIL") return 1;
+    return 0;
+  });
+  orderedGroups.forEach(groupName => {
+    const templates = groups.get(groupName);
+    const isEmailFolder = groupName === "EMAIL";
+    const folder = document.createElement("div");
+    folder.className = "quick-template-folder" + (isEmailFolder ? " email-folder" : "");
+    const groupLabel = document.createElement("div");
+    groupLabel.className = "ctrl-label" + (isEmailFolder ? " folder-toggle" : "");
+    groupLabel.style.marginTop = "12px";
+    groupLabel.textContent = groupName;
+    folder.appendChild(groupLabel);
+    const items = document.createElement("div");
+    items.className = "quick-folder-items";
+    if (isEmailFolder) items.style.display = "none";
+    templates.forEach(t => {
+      const chip = document.createElement("button");
+      chip.className = "quick-tpl-chip";
+      chip.type = "button";
+      chip.textContent = t.header;
+      chip.addEventListener("click", () => selectTemplate(t.id));
+      items.appendChild(chip);
+    });
+    folder.appendChild(items);
+    if (isEmailFolder) {
+      groupLabel.addEventListener("click", () => {
+        openEmailFolderModal(templates);
+      });
+    }
+    host.appendChild(folder);
+  });
+}
+
+function openEmailFolderModal(templates) {
+  const old = document.getElementById("emailFolderModal");
+  if (old) old.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "emailFolderModal";
+  overlay.className = "email-folder-modal";
+  const dialog = document.createElement("div");
+  dialog.className = "email-folder-dialog";
+  dialog.innerHTML = `<div class="email-folder-dialog-head"><div><div class="email-folder-dialog-title">EMAIL</div><div class="email-folder-dialog-subtitle">Team / internal mails</div></div><button type="button" class="email-folder-close" aria-label="Close">×</button></div>`;
+  const list = document.createElement("div");
+  list.className = "email-folder-list";
+  if (!templates.length) {
+    const empty = document.createElement("div");
+    empty.className = "email-folder-empty";
+    empty.textContent = "No sub-mails added yet";
+    list.appendChild(empty);
+  } else {
+    templates.forEach(t => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "email-folder-mail";
+      item.innerHTML = `<span>${escapeHTML(t.header)}</span><small>${escapeHTML(t.description || "")}</small>`;
+      item.addEventListener("click", () => {
+        overlay.remove();
+        selectTemplate(t.id);
+      });
+      list.appendChild(item);
+    });
+  }
+  dialog.appendChild(list);
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  dialog.querySelector(".email-folder-close").addEventListener("click", close);
+  overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
 }
 
 /* ---------- DOCS REQUIRED Controls ---------- */
@@ -4111,6 +4666,7 @@ function selectTemplate(id) {
   if (!tpl) return;
 
   appState.activeTemplateId = id;
+  if (tpl.category === "EMAIL") appState.emailFolderOpen = true;
   appState.fieldValues = {};
   appState.documents = [];
   appState.manualText = "";
@@ -4205,7 +4761,7 @@ function showResults(query) {
       if (idx === 0) card.classList.add("highlighted");
       const h = document.createElement("div");
       h.className = "result-header";
-      h.textContent = tpl.header;
+      h.textContent = tpl.category ? `${tpl.category} / ${tpl.header}` : tpl.header;
       const d = document.createElement("div");
       d.className = "result-desc";
       d.textContent = tpl.description;
@@ -4228,6 +4784,12 @@ function setCopyButtonsDisabled(disabled) {
   getCopyButtons().forEach(btn => {
     btn.disabled = disabled;
   });
+  const subjectBtn = document.getElementById("copySubjectBtn");
+  if (subjectBtn) {
+    const showSubjectButton = getActiveTemplate()?.category === "EMAIL";
+    subjectBtn.style.display = showSubjectButton ? "" : "none";
+    subjectBtn.disabled = disabled || !showSubjectButton;
+  }
 }
 
 function setCopyButtonsCopied(copied) {
@@ -4246,6 +4808,16 @@ async function copyMail() {
     ? (card.textContent || "")
     : (appState.manualPreviewOverride !== null ? appState.manualPreviewOverride : buildPreview());
   text = text.replace(/\r\n/g, "\n").trim();
+  if (getActiveTemplate()?.category === "EMAIL") {
+    text = text.split("\n").slice(3).join("\n").trim();
+    text = text
+      .replace(/^Attachment: Settlement Sheet \(Required\)\s*$/gim, "")
+      .replace(/^Attachment: BMS PG Screenshot \(Required\)\s*$/gim, "")
+      .replace(/^Internal Status: PB Pendency\s*$/gim, "")
+      .replace(/^Internal Status: Tech Pendency\s*$/gim, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
   if (!text) return;
 
   let success = false;
@@ -4266,6 +4838,46 @@ async function copyMail() {
     setTimeout(() => setCopyButtonsCopied(false), 1500);
   } else {
     showToast("Unable to copy. Please select & copy manually.", "error");
+  }
+}
+
+async function copyDoubleDeductionSubject() {
+  if (getActiveTemplate()?.category !== "EMAIL") return;
+  const f = appState.fieldValues;
+  let subject;
+  if (appState.activeTemplateId === "excess_amount_email") {
+    subject = `Excess amount for Booking ID: ${(f.exBookingId || "").trim()}`.trim();
+  } else if (appState.activeTemplateId === "bajaj_excess_refund_email") {
+    subject = `Excess amount for Booking ID: ${(f.bjBookingId || "").trim()}`.trim();
+  } else if (appState.activeTemplateId === "national_excess_refund_email") {
+    subject = `Excess Refund Approval Required : ${(f.neOrderNo || "").trim()}`.trim();
+  } else if (appState.activeTemplateId === "bajaj_double_deduction_email") {
+    subject = `Double Deduction :: ${(f.bdPolicyNumber || "").trim()} :: ${(f.bdBookingId || "").trim()}`.trim();
+  } else if (appState.activeTemplateId === "four_w_order_id_email") {
+    subject = `Double Deduction : ${(f.fwPolicyNumber || "").trim()} :: ${(f.fwBookingId || "").trim()}`.trim();
+  } else {
+    const policyNumber = (f.ndPolicyNumber || f.ddPolicyNumber || "").trim();
+    const bookingId = (f.ndBookingId || f.ddBookingId || "").trim();
+    subject = `Double Deduction : ${policyNumber} :: ${bookingId}`.trim();
+  }
+  if (!subject) return;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(subject);
+    } else {
+      fallbackCopy(subject);
+    }
+    const btn = document.getElementById("copySubjectBtn");
+    if (btn) {
+      btn.textContent = "Copied";
+      btn.classList.add("copied");
+      setTimeout(() => {
+        btn.textContent = "Copy Subject";
+        btn.classList.remove("copied");
+      }, 1500);
+    }
+  } catch (e) {
+    showToast("Unable to copy subject", "error");
   }
 }
 
@@ -4552,6 +5164,12 @@ function showToast(msg, kind) {
    INITIALIZE
    ========================================================= */
 function init() {
+  // Always start with no selected template and no preview on a fresh page load.
+  appState.activeTemplateId = null;
+  appState.emailFolderOpen = false;
+  appState.fieldValues = {};
+  appState.sectionSelections = {};
+
   // Search
   const searchInput = document.getElementById("searchInput");
   const clearBtn = document.getElementById("clearSearchBtn");
@@ -4615,6 +5233,7 @@ function init() {
   // Change template
   document.getElementById("changeTplBtn").addEventListener("click", () => {
     appState.activeTemplateId = null;
+    appState.emailFolderOpen = false;
     document.getElementById("previewCard").textContent = "";
     setCopyButtonsDisabled(true);
     document.getElementById("searchInput").focus();
@@ -4626,6 +5245,7 @@ function init() {
   document.getElementById("resetTopBtn").addEventListener("click", resetTemplate);
   document.getElementById("copyBtn").addEventListener("click", copyMail);
   document.getElementById("copyTopBtn").addEventListener("click", copyMail);
+  document.getElementById("copySubjectBtn").addEventListener("click", copyDoubleDeductionSubject);
 
   // Preview editing
   const card = document.getElementById("previewCard");
