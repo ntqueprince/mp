@@ -184,6 +184,14 @@ const mailTemplates = [
     type: "dynamic"
   },
   {
+    id: "sbi_policy_issuance_email",
+    header: "SBI POLICY ISSUANCE",
+    category: "EMAIL",
+    description: "SBI policy issuance request with Aadhaar, PAN, RC and feed file",
+    keywords: ["sbi policy issuance", "sbi issuance", "aadhar pan rc feedfile", "aadhaar pan rc feed file", "pb pendency", "sbi policy"],
+    type: "dynamic"
+  },
+  {
     id: "bajaj_excess_refund_email",
     header: "BAJAJ EXCESS REFUND",
     category: "EMAIL",
@@ -384,7 +392,7 @@ const mailTemplates = [
     description: "Post-issuance policy cancellation process",
     keywords: ["cancellation", "cancel", "post issuance cancel", "post issuance cancellation", "post issunce cancel", "post issunce cancellation", "118", "alt policy", "alternate policy", "alternative policy", "alternative", "neft", "refund details", "bank details", "written consent", "cancelled cheque", "bank passbook", "package policy", "documents", "docs", "rc", "pyp", "aadhar", "pan", "dl", "noc", "cng"],
     type: "selectable",
-    defaultSelections: { irdaiNote: false, consent: false, alternate: true, alternateMayBe: false, neft: false, documents: false }
+    defaultSelections: { irdaiNote: false, consent: false, alternate: true, alternateMayBe: false, neft: false, documents: false, cancellationExactDate: false }
   },
 
   /* ---------- 7. CHARGEBACK REVERSAL ---------- */
@@ -979,6 +987,7 @@ function buildPreview() {
       case "blank_mail": baseText = buildBlankMail(); break;
       case "national_double_deduction_email": baseText = buildNationalDoubleDeductionEmail(); break;
       case "four_w_order_id_email": baseText = buildFourWOrderIdEmail(); break;
+      case "sbi_policy_issuance_email": baseText = buildSbiPolicyIssuanceEmail(); break;
       case "bajaj_excess_refund_email": baseText = buildBajajExcessRefundEmail(); break;
       case "national_excess_refund_email": baseText = buildNationalExcessRefundEmail(); break;
       case "bajaj_double_deduction_email": baseText = buildBajajDoubleDeductionEmail(); break;
@@ -1094,6 +1103,30 @@ function buildFourWOrderIdEmail() {
     "Regards",
     signature
   ].join("\n");
+}
+
+function buildSbiPolicyIssuanceEmail() {
+  const f = appState.fieldValues;
+  const registrationNumber = (f.sbiRegistrationNumber || "").trim();
+  const policyNumber = (f.sbiPolicyNumber || "").trim();
+  const signature = (f.sbiSignature || "Shivang Jaiswal").trim();
+  return [
+    "To: Vasudev",
+    "CC: Tajmohammad, Subhan Sir",
+    `Subject: Policy Issuance : ${policyNumber}`.trim(),
+    "",
+    "Hi Team,",
+    "",
+    "Please issue this policy.",
+    registrationNumber ? `Registration Number: ${registrationNumber}` : "",
+    "",
+    "PFA Aadhaar, PAN, RC and Feedfile.",
+    "Attachment: Aadhaar, PAN, RC and Feedfile (Required)",
+    "Internal Status: PB Pendency",
+    "",
+    "Regards,",
+    signature
+  ].filter((line, index, lines) => line || index === 0 || lines[index - 1] !== "").join("\n");
 }
 
 function buildBajajExcessRefundEmail() {
@@ -1751,8 +1784,12 @@ function buildCancellation() {
     parts.push("However, we kindly request you to provide the following:\n\n" + formatted.join("\n"));
   }
 
+  const cancellationTimeline = appState.sectionSelections.cancellationExactDate
+    ? `The cancellation process typically takes 10 days (till ${formatDateDDMonthYYYY(addDays(new Date(), 10))}).`
+    : "The cancellation process typically takes 10 days.";
+
   parts.push(
-    "The cancellation process typically takes 10 days.",
+    cancellationTimeline,
     "Additionally, please note that there will be an INR 118 administrative fee, along with a deduction based on the policy usage, which will be determined by the insurer after the cancellation request is raised."
   );
 
@@ -2382,6 +2419,7 @@ function renderControls() {
     case "blank_mail": renderBlankMailControls(host); break;
     case "national_double_deduction_email": renderNationalDoubleDeductionControls(host); break;
     case "four_w_order_id_email": renderFourWOrderIdControls(host); break;
+    case "sbi_policy_issuance_email": renderSbiPolicyIssuanceControls(host); break;
     case "bajaj_excess_refund_email": renderBajajExcessRefundControls(host); break;
     case "national_excess_refund_email": renderNationalExcessRefundControls(host); break;
     case "bajaj_double_deduction_email": renderBajajDoubleDeductionControls(host); break;
@@ -2523,6 +2561,15 @@ function renderFourWOrderIdControls(host) {
     grp.appendChild(input);
   });
   host.appendChild(grp);
+}
+
+function renderSbiPolicyIssuanceControls(host) {
+  const f = appState.fieldValues;
+  renderEmailFieldGroup(host, "SBI Policy Issuance Details", [
+    ["sbiPolicyNumber", "Policy Number (Subject)", "Enter policy number"],
+    ["sbiRegistrationNumber", "Registration Number", "e.g. AP39KQ8242"],
+    ["sbiSignature", "Your Name", "Shivang Jaiswal"]
+  ], f);
 }
 
 function renderBajajExcessRefundControls(host) {
@@ -3532,6 +3579,12 @@ function renderCancellationControls(host) {
     "Ask for cancelled cheque/passbook of insured person",
     appState.sectionSelections.neft,
     val => { appState.sectionSelections.neft = val; updatePreview(); }
+  ));
+  grp.appendChild(createToggleRow(
+    "Show Exact Date",
+    "Add the expected completion date after the 10-day timeline",
+    !!appState.sectionSelections.cancellationExactDate,
+    val => { appState.sectionSelections.cancellationExactDate = val; updatePreview(); }
   ));
   host.appendChild(grp);
 
@@ -4813,6 +4866,8 @@ async function copyMail() {
     text = text
       .replace(/^Attachment: Settlement Sheet \(Required\)\s*$/gim, "")
       .replace(/^Attachment: BMS PG Screenshot \(Required\)\s*$/gim, "")
+      .replace(/^Attachment: Aadhaar, PAN, RC and Feedfile \(Required\)\s*$/gim, "")
+      .replace(/^PFA Aadhaar, PAN, RC and Feedfile\.\s*$/gim, "")
       .replace(/^Internal Status: PB Pendency\s*$/gim, "")
       .replace(/^Internal Status: Tech Pendency\s*$/gim, "")
       .replace(/\n{3,}/g, "\n\n")
@@ -4855,6 +4910,8 @@ async function copyDoubleDeductionSubject() {
     subject = `Double Deduction :: ${(f.bdPolicyNumber || "").trim()} :: ${(f.bdBookingId || "").trim()}`.trim();
   } else if (appState.activeTemplateId === "four_w_order_id_email") {
     subject = `Double Deduction : ${(f.fwPolicyNumber || "").trim()} :: ${(f.fwBookingId || "").trim()}`.trim();
+  } else if (appState.activeTemplateId === "sbi_policy_issuance_email") {
+    subject = `Policy Issuance : ${(f.sbiPolicyNumber || "").trim()}`;
   } else {
     const policyNumber = (f.ndPolicyNumber || f.ddPolicyNumber || "").trim();
     const bookingId = (f.ndBookingId || f.ddBookingId || "").trim();
@@ -5160,6 +5217,35 @@ function showToast(msg, kind) {
   }, 2000);
 }
 
+function openPrivateNotes() {
+  const modal = document.getElementById("privateNotesModal");
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+  document.getElementById("closePrivateNotesBtn").focus();
+}
+
+function closePrivateNotes() {
+  const modal = document.getElementById("privateNotesModal");
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+async function copyBajajPortalId() {
+  const value = document.getElementById("bajajPortalId").textContent.trim();
+  let copied = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(value);
+      copied = true;
+    } else {
+      copied = fallbackCopy(value);
+    }
+  } catch (error) {
+    copied = fallbackCopy(value);
+  }
+  showToast(copied ? "Portal ID copied" : "Unable to copy portal ID", copied ? "success" : "error");
+}
+
 /* =========================================================
    INITIALIZE
    ========================================================= */
@@ -5247,6 +5333,15 @@ function init() {
   document.getElementById("copyTopBtn").addEventListener("click", copyMail);
   document.getElementById("copySubjectBtn").addEventListener("click", copyDoubleDeductionSubject);
 
+  // Private notes (Ctrl + Alt + N)
+  const privateNotesModal = document.getElementById("privateNotesModal");
+  document.getElementById("closePrivateNotesBtn").addEventListener("click", closePrivateNotes);
+  document.getElementById("copyBajajIdBtn").addEventListener("click", copyBajajPortalId);
+  document.getElementById("privateNotesTrigger").addEventListener("dblclick", openPrivateNotes);
+  privateNotesModal.addEventListener("click", e => {
+    if (e.target === privateNotesModal) closePrivateNotes();
+  });
+
   // Preview editing
   const card = document.getElementById("previewCard");
   card.addEventListener("dblclick", () => {
@@ -5298,6 +5393,15 @@ function init() {
 
   // Keyboard: Ctrl+F focuses search
   document.addEventListener("keydown", e => {
+    if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "n") {
+      e.preventDefault();
+      if (privateNotesModal.classList.contains("open")) {
+        closePrivateNotes();
+      } else {
+        openPrivateNotes();
+      }
+      return;
+    }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
       const shell = document.getElementById("appShell");
       if (shell.style.display !== "none") {
@@ -5307,6 +5411,10 @@ function init() {
       }
     }
     if (e.key === "Escape") {
+      if (privateNotesModal.classList.contains("open")) {
+        closePrivateNotes();
+        return;
+      }
       const dd = document.getElementById("resultsDropdown");
       if (dd.classList.contains("visible")) dd.classList.remove("visible");
     }
