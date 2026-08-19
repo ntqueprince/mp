@@ -16,7 +16,7 @@
     <!-- Header -->
     <header class="app-header" id="appHeader">
       <div class="brand">
-        <div class="brand-badge" aria-hidden="true">PB</div>
+        <div class="brand-badge" id="privateNotesTrigger" aria-hidden="true">PB</div>
         <div class="brand-text">
           <h1>PB Mail Helper</h1>
           <span class="brand-sub">Fast insurance mail composer</span>
@@ -124,6 +124,26 @@
 
   <!-- Toast -->
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Private Notes (open with Ctrl + Alt + N) -->
+  <div id="privateNotesModal" class="private-notes-modal" aria-hidden="true">
+    <section class="private-notes-dialog" role="dialog" aria-modal="true" aria-labelledby="privateNotesTitle">
+      <div class="private-notes-head">
+        <h2 id="privateNotesTitle">Bajaj Notes</h2>
+        <button id="closePrivateNotesBtn" class="private-notes-close" type="button" aria-label="Close notes">×</button>
+      </div>
+      <div class="private-note-row">
+        <span class="private-note-label">Portal</span>
+        <a href="https://portal.bajajgeneral.com/BagicNxt/plogin.jsp" target="_blank" rel="noopener noreferrer">Open Bajaj Portal</a>
+      </div>
+      <div class="private-note-row">
+        <span class="private-note-label">ID</span>
+        <code id="bajajPortalId">operation.policybazar01@general.bajajgeneral.com</code>
+        <button id="copyBajajIdBtn" class="private-copy-btn" type="button">Copy</button>
+      </div>
+      <p class="private-notes-hint">Shortcut: Ctrl + Alt + N</p>
+    </section>
+  </div>
 
   <script src="script.js" defer></script>
 </body>
