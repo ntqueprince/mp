@@ -64,11 +64,16 @@ function normalizeDocument(raw) {
   const original = raw.trim();
   const lowerRaw = original.toLowerCase();
 
-  // If contains " or " or "/" or " / " or " and "
-  if (lowerRaw.includes(" or ") || lowerRaw.includes("/") || lowerRaw.includes(" and ")) {
-    const parts = original.split(/\s+or\s+|\s*\/\s*|\s+and\s+/i);
-    const normalizedParts = parts.map(part => normalizeSingleDocument(part));
-    return normalizedParts.filter(p => p).join(" OR ");
+  // Normalize each document name but retain the connector the user typed.
+  // Example: "pan and aadhar" → "PAN CARD AND AADHAAR CARD".
+  const connectorMatch = original.match(/\s+(or|and)\s+|\s*\/\s*/i);
+  if (connectorMatch) {
+    const connector = connectorMatch[0].trim() === "/"
+      ? " / "
+      : ` ${connectorMatch[1].toUpperCase()} `;
+    const parts = original.split(/\s+or\s+|\s+and\s+|\s*\/\s*/i);
+    const normalizedParts = parts.map(part => normalizeSingleDocument(part)).filter(Boolean);
+    return normalizedParts.join(connector);
   }
 
   return normalizeSingleDocument(original);
@@ -660,6 +665,7 @@ const mailTemplates = [
     type: "selectable",
     defaultSelections: {
       pypActiveMode: false,
+      previousPolicyActiveMode: false,
       idvNotPossible: true,
       reasonThirdParty: true,
       poiNotPossible: false,
@@ -922,7 +928,7 @@ function searchTemplates(query) {
     // Word-by-word matching (each query word must appear somewhere)
     const qWords = q.split(" ").filter(w => w.length >= 2);
     if (qWords.length > 1) {
-    const haystack = normalizeSearch(tpl.category || "") + " " + headerNorm + " " + descNorm + " " + tpl.keywords.map(normalizeSearch).join(" ");
+      const haystack = normalizeSearch(tpl.category || "") + " " + headerNorm + " " + descNorm + " " + tpl.keywords.map(normalizeSearch).join(" ");
       let allWordsMatch = true;
       for (const w of qWords) {
         if (!haystack.includes(w)) { allWordsMatch = false; break; }
@@ -2071,8 +2077,7 @@ function buildChangeNotPossible() {
 
   // Automatically expand abbreviations
   change = expandAbbreviations(change);
-  change = change.replace(/\bidv\b/gi, "IDV (Insured Declared Value)");
-  change = change.replace(/\bpoi\b/gi, "Period of Insurance (POI)");
+  change = change.replace(/\bidv\b(?!\s*\(Insured Declared Value\))/gi, "IDV (Insured Declared Value)");
 
   if (s.runningClaimMode) {
     const changeDetail = change ? ` for ${change}` : "";
@@ -2099,6 +2104,21 @@ function buildChangeNotPossible() {
       `We would like to inform you that the requested endorsement or changes cannot be processed at this stage, as your current policy has not started yet. The insurance company can only correct the ${targetField} once the policy becomes active.`,
       "",
       "We kindly request you to raise a fresh endorsement request once your policy is active.",
+      "",
+      "We sincerely regret any inconvenience caused and appreciate your understanding in this regard."
+    ].join("\n");
+  }
+
+  if (s.previousPolicyActiveMode) {
+    const targetField = change || "correction";
+    return [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your request regarding the endorsement of your insurance policy.",
+      "",
+      `We would like to inform you that the requested ${targetField} cannot be processed at this stage, as your previous year policy is still active.`,
+      "",
+      "The insurance company can process this request only after the previous year policy has expired. We kindly request you to raise a fresh endorsement request once it has expired.",
       "",
       "We sincerely regret any inconvenience caused and appreciate your understanding in this regard."
     ].join("\n");
@@ -4089,7 +4109,24 @@ function renderChangeNotPossibleControls(host) {
     !!s.pypActiveMode,
     val => {
       s.pypActiveMode = val;
-      if (val) s.runningClaimMode = false;
+      if (val) {
+        s.runningClaimMode = false;
+        s.previousPolicyActiveMode = false;
+      }
+      renderControls();
+      updatePreview();
+    }
+  ));
+  modeGrp.appendChild(createToggleRow(
+    "Previous Policy Active Mode",
+    "Insurer can process the correction only after the previous year policy expires",
+    !!s.previousPolicyActiveMode,
+    val => {
+      s.previousPolicyActiveMode = val;
+      if (val) {
+        s.pypActiveMode = false;
+        s.runningClaimMode = false;
+      }
       renderControls();
       updatePreview();
     }
@@ -4100,7 +4137,10 @@ function renderChangeNotPossibleControls(host) {
     !!s.runningClaimMode,
     val => {
       s.runningClaimMode = val;
-      if (val) s.pypActiveMode = false;
+      if (val) {
+        s.pypActiveMode = false;
+        s.previousPolicyActiveMode = false;
+      }
       renderControls();
       updatePreview();
     }
@@ -4109,7 +4149,7 @@ function renderChangeNotPossibleControls(host) {
 
   const groupTitle = s.runningClaimMode
     ? "Claim & Detail Options"
-    : (s.pypActiveMode ? "Correction Details" : "Custom Rejection Details");
+    : ((s.pypActiveMode || s.previousPolicyActiveMode) ? "Correction Details" : "Custom Rejection Details");
 
   const grp = createGroup(groupTitle);
 
@@ -4117,14 +4157,14 @@ function renderChangeNotPossibleControls(host) {
   changeLbl.className = "ctrl-label";
   changeLbl.textContent = s.runningClaimMode
     ? "Detail requested (Optional, e.g. Name, MMV, POI)"
-    : (s.pypActiveMode ? "Detail to correct (e.g. POI, Name, Mobile Number, MMV)" : "What change is not possible? (e.g. IDV update)");
+    : (s.previousPolicyActiveMode ? "Correction detail (Optional, e.g. Name correction, POI, MMV)" : (s.pypActiveMode ? "Detail to correct (e.g. POI, Name, Mobile Number, MMV)" : "What change is not possible? (e.g. IDV update)"));
 
   const changeInp = document.createElement("input");
   changeInp.type = "text";
   changeInp.className = "text-input";
   changeInp.placeholder = s.runningClaimMode
     ? "Optional e.g. Name or MMV"
-    : (s.pypActiveMode ? "e.g. POI, Name, Mobile Number, MMV" : "e.g. IDV update");
+    : (s.previousPolicyActiveMode ? "Optional — e.g. Name correction" : (s.pypActiveMode ? "e.g. POI, Name, Mobile Number, MMV" : "e.g. IDV update"));
   changeInp.value = appState.fieldValues.notPossibleChange || "";
   changeInp.addEventListener("input", () => {
     appState.fieldValues.notPossibleChange = changeInp.value;
@@ -4133,7 +4173,7 @@ function renderChangeNotPossibleControls(host) {
   grp.appendChild(changeLbl);
   grp.appendChild(changeInp);
 
-  if (!s.pypActiveMode && !s.runningClaimMode) {
+  if (!s.pypActiveMode && !s.previousPolicyActiveMode && !s.runningClaimMode) {
     const reasonLbl = document.createElement("label");
     reasonLbl.className = "ctrl-label";
     reasonLbl.style.marginTop = "10px";
@@ -4184,6 +4224,13 @@ function renderChangeNotPossibleControls(host) {
       runningClaimMode: false
     },
     {
+      name: "PYP Active",
+      change: "",
+      pypActiveMode: false,
+      previousPolicyActiveMode: true,
+      runningClaimMode: false
+    },
+    {
       name: "IDV (Third-Party)",
       change: "IDV update",
       reason: "since this is a Third-Party policy, the vehicle itself is not covered, and therefore, an Insured Declared Value (IDV) is not applicable",
@@ -4217,6 +4264,8 @@ function renderChangeNotPossibleControls(host) {
     btn.textContent = p.name;
     btn.addEventListener("click", () => {
       s.pypActiveMode = !!p.pypActiveMode;
+      s.previousPolicyActiveMode = !!p.previousPolicyActiveMode;
+      s.runningClaimMode = !!p.runningClaimMode;
       appState.fieldValues.notPossibleChange = p.change;
       if (p.reason) {
         appState.fieldValues.notPossibleReason = p.reason;
@@ -4747,7 +4796,7 @@ function selectTemplate(id) {
     appState.sectionSelections = {
       greeting: true,
       reference: true,
-       forwarded: false,
+      forwarded: false,
       documents: false,
       tat: true,
       showExactDate: true
@@ -4963,6 +5012,15 @@ function resetTemplate() {
   }
   selectTemplate(id);
   showToast("Template reset", "success");
+}
+
+function returnToMailSearch() {
+  appState.activeTemplateId = null;
+  appState.emailFolderOpen = false;
+  document.getElementById("previewCard").textContent = "";
+  setCopyButtonsDisabled(true);
+  renderControls();
+  document.getElementById("searchInput").focus();
 }
 
 /* =========================================================
@@ -5316,15 +5374,14 @@ function init() {
   document.getElementById("hideBtn").addEventListener("click", hideToMini);
   document.getElementById("closeBtn").addEventListener("click", closeApp);
 
-  // Change template
-  document.getElementById("changeTplBtn").addEventListener("click", () => {
-    appState.activeTemplateId = null;
-    appState.emailFolderOpen = false;
-    document.getElementById("previewCard").textContent = "";
-    setCopyButtonsDisabled(true);
-    document.getElementById("searchInput").focus();
-    renderControls();
+  // Click the blue header to return to the main mail-search page.
+  document.getElementById("appHeader").addEventListener("click", e => {
+    if (appState.isFloating || e.target.closest(".header-actions") || e.target.closest("#privateNotesTrigger")) return;
+    returnToMailSearch();
   });
+
+  // Change template
+  document.getElementById("changeTplBtn").addEventListener("click", returnToMailSearch);
 
   // Action buttons
   document.getElementById("resetBtn").addEventListener("click", resetTemplate);
