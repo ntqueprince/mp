@@ -537,7 +537,7 @@ const mailTemplates = [
     description: "Policy details already updated on M-Parivahan",
     keywords: ["vahan updated", "mparivahan updated", "m parivahan updated", "policy updated vahan", "vahan done", "mparivahan done", "nextgen mparivahan", "vahan reflect", "policy reflect", "updated parivahan"],
     type: "selectable",
-    defaultSelections: { screenshot: false }
+    defaultSelections: { screenshot: true }
   },
 
   /* ---------- 12. PA NOMINEE ---------- */
