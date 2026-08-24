@@ -803,6 +803,7 @@ const mailTemplates = [
     keywords: ["sbi ot", "sbi ownership transfer", "sbi", "pa declaration", "shortfall 50", "pa cover owner driver", "sbi shortfall"],
     type: "hybrid",
     defaultSelections: {
+      clarification: false,
       paCoverSection: true,
       shortfallPayment: false,
       tat: true,
@@ -879,6 +880,15 @@ const mailTemplates = [
       "",
       "We appreciate your patience while we work on resolving this for you."
     ].join("\n")
+  },
+  /* ---------- TOPUP NOT POSSIBLE ---------- */
+  {
+    id: "topup_not_possible",
+    header: "TOPUP NOT POSSIBLE",
+    description: "Top-up not possible, plan can be changed from Limited Kilometer to regular plan",
+    keywords: ["topup not possible", "top up not possible", "topup", "top up", "payd", "payd to regular", "limited kilometer", "limited kilometer to regular", "plan change", "topup change", "top up change", "payd plan", "regular plan"],
+    type: "selectable",
+    defaultSelections: { showExactDate: false, odometerPhoto: false }
   }
 ];
 
@@ -1022,6 +1032,7 @@ function buildPreview() {
       case "vas_voucher": baseText = buildVasVoucher(); break;
       case "change_not_possible": baseText = buildChangeNotPossible(); break;
       case "sbi_ot": baseText = buildSbiOt(); break;
+      case "topup_not_possible": baseText = buildTopupNotPossible(); break;
       default: baseText = tpl.body || ""; break;
     }
   }
@@ -2184,7 +2195,27 @@ function buildSbiOt() {
   ];
 
   const formattedDocs = getFormattedDocuments();
-  if (formattedDocs.length > 0) {
+  if (s.clarification) {
+    let otDocs = formattedDocs.length > 0
+      ? "Documents Required:\n" + formattedDocs.map(d => `• ${d}`).join("\n") + "\n\n"
+      : "";
+    const nameDocs = appState.nameCorrectionDocs?.length > 0
+      ? appState.nameCorrectionDocs.map(d => `• ${d}`).join("\n")
+      : "• Clear copy of the vehicle's Registration Certificate (RC)\n• Insured's ID proof (Aadhaar Card / PAN Card) reflecting the correct spelling of the name";
+    parts.push(
+      "",
+      "To proceed further, we request you to kindly confirm whether this request is for an Ownership Transfer or a Name Correction. Please share the respective documents and details as per your requirement:",
+      "",
+      "OPTION 1: For Ownership Transfer",
+      "",
+      otDocs + "New Owner Details:\n" +
+        "• Insured Name\n• Address\n• Email ID\n• Mobile Number\n• Date of Birth (DOB)\n• Marital Status\n• Nominee Name\n• Nominee DOB\n• Nominee Relationship with the Insured",
+      "",
+      "OPTION 2: For Name Correction",
+      "",
+      "Documents Required:\n" + nameDocs + "\n\nDetails Required:\n• Exact spelling of the Insured's Name to be corrected"
+    );
+  } else if (formattedDocs.length > 0) {
     let docBlock = "To proceed further with your request, we kindly request you to share the following documents and details:\n";
     for (const d of formattedDocs) {
       docBlock += `\n\u2022 ${d}`;
@@ -2359,6 +2390,29 @@ function buildMParivahanMail() {
   return parts.join("\n\n");
 }
 
+/* ---------- TOPUP NOT POSSIBLE ---------- */
+function buildTopupNotPossible() {
+  const s = appState.sectionSelections;
+  const tatLine = s.showExactDate
+    ? `Additionally, please note that the turnaround time for making changes to your policy copy can take up to 10 days (till ${formatDateDDMonthYYYY(addDays(new Date(), 10))}).`
+    : "Additionally, please note that the turnaround time for making changes to your policy copy can take up to 10 days.";
+
+  const parts = [
+    "Greetings from PolicyBazaar.com!",
+    "This is in reference to your request.",
+    "We would like to inform you that a top-up is not possible. However, the plan can be changed from Limited Kilometer to a regular plan. If you are agreeable to this change, please confirm.",
+    tatLine,
+    "There may also be charges and an inspection applicable, which will be communicated to you in future correspondence.",
+    "We kindly request that you keep the endorsed copy along with your original policy copy for future reference."
+  ];
+
+  if (s.odometerPhoto) {
+    parts.push("We also request you to share the odometer reading photo for further processing.");
+  }
+
+  return parts.join("\n\n");
+}
+
 /* ---------- TAT ALREADY SHARED ---------- */
 function buildTatAlreadyShared() {
   const s = appState.sectionSelections;
@@ -2387,7 +2441,7 @@ function buildTatAlreadyShared() {
     "",
     "This is with reference to your request.",
     "",
-    "Thank you for sharing the requested documents / details.",
+    "Thank you for sharing the requested requirements.",
     "",
     "We would like to inform you that we have forwarded your request to the insurance company for processing.",
     "",
@@ -2468,6 +2522,7 @@ function renderControls() {
     case "vas_voucher": renderVasVoucherControls(host); break;
     case "change_not_possible": renderChangeNotPossibleControls(host); break;
     case "sbi_ot": renderSbiOtControls(host); break;
+    case "topup_not_possible": renderTopupNotPossibleControls(host); break;
   }
 
   renderExtraNoteControls(host);
@@ -4284,6 +4339,20 @@ function renderChangeNotPossibleControls(host) {
 function renderSbiOtControls(host) {
   const s = appState.sectionSelections;
 
+  const modeGrp = createGroup("Options");
+  modeGrp.appendChild(createToggleRow(
+    "Ownership Transfer / Name Correction",
+    "Ask the customer to confirm the request type and show document requirements for both options",
+    !!s.clarification,
+    val => {
+      s.clarification = val;
+      if (val && !appState.nameCorrectionDocs) appState.nameCorrectionDocs = [];
+      renderControls();
+      updatePreview();
+    }
+  ));
+  host.appendChild(modeGrp);
+
   // Documents
   const docGrp = createGroup("Documents & Details");
   const docWrap = document.createElement("div");
@@ -4317,6 +4386,37 @@ function renderSbiOtControls(host) {
       if (e.key === "Enter") { e.preventDefault(); doAdd(); }
     });
     renderDocChips(chips);
+  }
+
+  if (s.clarification) {
+    const nameDocGrp = createGroup("Name Correction Documents");
+    nameDocGrp.innerHTML = `
+      <div class="doc-input-row">
+        <input type="text" class="text-input" id="nameDocInput" placeholder="Type document e.g. correct rc, pan, aadhar"/>
+        <button type="button" class="doc-add-btn" id="nameDocAddBtn">Add</button>
+      </div>
+      <div class="doc-chips" id="nameDocChips"></div>
+    `;
+    host.appendChild(nameDocGrp);
+
+    const nameInput = document.getElementById("nameDocInput");
+    const nameBtn = document.getElementById("nameDocAddBtn");
+    const nameChips = document.getElementById("nameDocChips");
+    const addNameDocument = () => {
+      const val = nameInput.value.trim();
+      if (!val) return;
+      const norm = normalizeDocument(val);
+      if (!appState.nameCorrectionDocs) appState.nameCorrectionDocs = [];
+      if (!appState.nameCorrectionDocs.includes(norm)) appState.nameCorrectionDocs.push(norm);
+      nameInput.value = "";
+      renderNameDocChips(nameChips);
+      updatePreview();
+    };
+    nameBtn.addEventListener("click", addNameDocument);
+    nameInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") { e.preventDefault(); addNameDocument(); }
+    });
+    renderNameDocChips(nameChips);
   }
 
   // Toggles Group
@@ -4646,6 +4746,28 @@ function renderMParivahanMailControls(host) {
   host.appendChild(tatGrp);
 }
 
+/* ---------- TOPUP NOT POSSIBLE Controls ---------- */
+function renderTopupNotPossibleControls(host) {
+  const s = appState.sectionSelections;
+  const grp = createGroup("Options");
+
+  grp.appendChild(createToggleRow(
+    "Show Exact Date",
+    "Add expected completion date after 10-day timeline (till DD-Month-YYYY)",
+    !!s.showExactDate,
+    val => { s.showExactDate = val; updatePreview(); }
+  ));
+
+  grp.appendChild(createToggleRow(
+    "Odometer Reading Photo",
+    "Ask customer to share photo of current odometer reading",
+    !!s.odometerPhoto,
+    val => { s.odometerPhoto = val; updatePreview(); }
+  ));
+
+  host.appendChild(grp);
+}
+
 /* ---------- Helpers ---------- */
 function createGroup(title) {
   const wrap = document.createElement("div");
@@ -4808,6 +4930,7 @@ function selectTemplate(id) {
     appState.documents = [];
   } else if (tpl.id === "sbi_ot") {
     appState.sectionSelections = { ...tpl.defaultSelections };
+    appState.nameCorrectionDocs = [];
     appState.documents = [
       "RC (REGISTRATION CERTIFICATE)",
       "AADHAAR CARD",
@@ -5416,11 +5539,42 @@ function init() {
     if (btn) {
       e.stopPropagation();
       const lineToDelete = btn.getAttribute("data-line");
+      const documentToDelete = String(lineToDelete || "").replace(/^•\s*/, "").trim();
+      const documentLists = [appState.documents, appState.nameCorrectionDocs];
+
+      // Capture the current text BEFORE modifying document arrays,
+      // otherwise buildPreview() won't contain the line we're trying to delete.
       let currentText = appState.manualPreviewOverride !== null ? appState.manualPreviewOverride : buildPreview();
+
+      let removedFromControls = false;
+
+      // Keep document chips in sync when their corresponding preview bullet is removed.
+      documentLists.forEach(list => {
+        if (!Array.isArray(list)) return;
+        const documentIndex = list.indexOf(documentToDelete);
+        if (documentIndex !== -1) {
+          list.splice(documentIndex, 1);
+          removedFromControls = true;
+        }
+      });
+
       const lines = currentText.split("\n");
       const index = lines.indexOf(lineToDelete);
       if (index !== -1) {
         lines.splice(index, 1);
+      }
+
+      if (removedFromControls) {
+        // Rebuild from state so the left-side document chip disappears too.
+        if (appState.manualPreviewOverride !== null) {
+          appState.manualPreviewOverride = lines.join("\n");
+          updatePreview(false);
+        } else {
+          updatePreview();
+        }
+        renderControls();
+        showToast("Document removed from preview and controls", "info");
+      } else if (index !== -1) {
         appState.manualPreviewOverride = lines.join("\n");
         updatePreview(false);
         showToast("Line deleted from preview", "info");
