@@ -889,6 +889,46 @@ const mailTemplates = [
     keywords: ["topup not possible", "top up not possible", "topup", "top up", "payd", "payd to regular", "limited kilometer", "limited kilometer to regular", "plan change", "topup change", "top up change", "payd plan", "regular plan"],
     type: "selectable",
     defaultSelections: { showExactDate: false, odometerPhoto: false }
+  },
+  /* ---------- ENDORSEMENT TAT ---------- */
+  {
+    id: "endorsement_tat",
+    header: "ENDORSEMENT TAT",
+    description: "Endorsement turnaround time and charges/inspection notice",
+    keywords: ["endorsement tat", "tat mail", "turnaround time", "charges and inspection", "under process", "10 days", "endorsement under process", "tat"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your request.",
+      "",
+      "We would like to apprise you that the turnaround time for getting the changes made in your policy copy can take up to 10 days.",
+      "",
+      "We would like to update you that there may be charges and inspection applicable, which shall be communicated to you in future communication.",
+      "",
+      "We request you to kindly keep the Endorsed copy along with your original policy copy for future reference."
+    ].join("\n")
+  },
+  /* ---------- VEHICLE SUBTYPE CONFIRMATION ---------- */
+  {
+    id: "vehicle_subtype_confirmation",
+    header: "VEHICLE SUBTYPE CONFIRMATION",
+    description: "Request customer to confirm correct vehicle subtype / variant from attached snapshot",
+    keywords: ["variant", "mmv", "correct mmv", "subtype", "vehicle subtype", "vehicle subtype confirmation", "confirm variant", "confirm subtype", "snapshot", "make model variant", "vehicle variant", "variant confirmation", "correct variant"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your request.",
+      "",
+      "Kindly confirm the correct vehicle subtype from the attached snapshot.",
+      "",
+      "We would like to apprise you that the turnaround time for getting the changes made in your policy copy can take up to 10 days.",
+      "",
+      "We would like to update you that there may be charges and inspection applicable, which shall be communicated to you in future communication.",
+      "",
+      "We request you to kindly keep the Endorsed copy along with your original policy copy for future reference."
+    ].join("\n")
   }
 ];
 
