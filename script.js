@@ -915,20 +915,13 @@ const mailTemplates = [
     header: "VEHICLE SUBTYPE CONFIRMATION",
     description: "Request customer to confirm correct vehicle subtype / variant from attached snapshot",
     keywords: ["variant", "mmv", "correct mmv", "subtype", "vehicle subtype", "vehicle subtype confirmation", "confirm variant", "confirm subtype", "snapshot", "make model variant", "vehicle variant", "variant confirmation", "correct variant"],
-    type: "fixed",
-    body: [
-      "Greetings from PolicyBazaar.com!",
-      "",
-      "This is with reference to your request.",
-      "",
-      "Kindly confirm the correct vehicle subtype from the attached snapshot.",
-      "",
-      "We would like to apprise you that the turnaround time for getting the changes made in your policy copy can take up to 10 days.",
-      "",
-      "We would like to update you that there may be charges and inspection applicable, which shall be communicated to you in future communication.",
-      "",
-      "We request you to kindly keep the Endorsed copy along with your original policy copy for future reference."
-    ].join("\n")
+    type: "hybrid",
+    defaultSelections: {
+      documents: false,
+      tat: true,
+      charges: true,
+      originalCopy: true
+    }
   }
 ];
 
@@ -1073,6 +1066,7 @@ function buildPreview() {
       case "change_not_possible": baseText = buildChangeNotPossible(); break;
       case "sbi_ot": baseText = buildSbiOt(); break;
       case "topup_not_possible": baseText = buildTopupNotPossible(); break;
+      case "vehicle_subtype_confirmation": baseText = buildVehicleSubtypeConfirmation(); break;
       default: baseText = tpl.body || ""; break;
     }
   }
@@ -2249,7 +2243,7 @@ function buildSbiOt() {
       "OPTION 1: For Ownership Transfer",
       "",
       otDocs + "New Owner Details:\n" +
-        "• Insured Name\n• Address\n• Email ID\n• Mobile Number\n• Date of Birth (DOB)\n• Marital Status\n• Nominee Name\n• Nominee DOB\n• Nominee Relationship with the Insured",
+      "• Insured Name\n• Address\n• Email ID\n• Mobile Number\n• Date of Birth (DOB)\n• Marital Status\n• Nominee Name\n• Nominee DOB\n• Nominee Relationship with the Insured",
       "",
       "OPTION 2: For Name Correction",
       "",
@@ -2453,6 +2447,38 @@ function buildTopupNotPossible() {
   return parts.join("\n\n");
 }
 
+/* ---------- VEHICLE SUBTYPE CONFIRMATION ---------- */
+function buildVehicleSubtypeConfirmation() {
+  const s = appState.sectionSelections;
+  const parts = [
+    "Greetings from PolicyBazaar.com!",
+    "This is with reference to your request."
+  ];
+
+  const formattedDocs = getFormattedDocuments();
+  if (s.documents && formattedDocs.length > 0) {
+    let docBlock = "We kindly request you to share the following document(s) to proceed further with your request:\n";
+    for (const d of formattedDocs) docBlock += "\n\u2022 " + d;
+    parts.push(docBlock);
+  }
+
+  parts.push("Kindly confirm the correct vehicle subtype from the attached snapshot.");
+
+  if (s.tat !== false) {
+    parts.push("We would like to apprise you that the turnaround time for getting the changes made in your policy copy can take up to 10 days.");
+  }
+
+  if (s.charges !== false) {
+    parts.push("We would like to update you that there may be charges and inspection applicable, which shall be communicated to you in future communication.");
+  }
+
+  if (s.originalCopy !== false) {
+    parts.push("We request you to kindly keep the Endorsed copy along with your original policy copy for future reference.");
+  }
+
+  return parts.join("\n\n");
+}
+
 /* ---------- TAT ALREADY SHARED ---------- */
 function buildTatAlreadyShared() {
   const s = appState.sectionSelections;
@@ -2563,6 +2589,7 @@ function renderControls() {
     case "change_not_possible": renderChangeNotPossibleControls(host); break;
     case "sbi_ot": renderSbiOtControls(host); break;
     case "topup_not_possible": renderTopupNotPossibleControls(host); break;
+    case "vehicle_subtype_confirmation": renderVehicleSubtypeConfirmationControls(host); break;
   }
 
   renderExtraNoteControls(host);
@@ -3157,6 +3184,78 @@ function renderDocsRequiredControls(host) {
     "Original Copy Warning Line",
     "Show keep endorsed copy recommendation",
     !!s.originalCopy,
+    val => { s.originalCopy = val; updatePreview(); }
+  ));
+  host.appendChild(optGrp);
+}
+
+/* ---------- VEHICLE SUBTYPE CONFIRMATION Controls ---------- */
+function renderVehicleSubtypeConfirmationControls(host) {
+  const s = appState.sectionSelections;
+
+  // Documents toggle + input
+  const docGrp = createGroup("\u{1F4C4} Documents");
+  docGrp.appendChild(createToggleRow("\u{1F4C4} Include Documents", "Request documents along with subtype confirmation", !!s.documents, val => {
+    s.documents = val;
+    renderControls();
+    updatePreview();
+  }));
+  if (s.documents) {
+    const docWrap = document.createElement("div");
+    docWrap.style.marginTop = "8px";
+    docWrap.innerHTML = `
+      <div class="doc-input-row">
+        <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. rc, aadhar, pyp"/>
+        <button type="button" class="doc-add-btn" id="docAddBtn">Add</button>
+      </div>
+      <div class="doc-chips" id="docChips"></div>
+    `;
+    docGrp.appendChild(docWrap);
+  }
+  host.appendChild(docGrp);
+
+  if (s.documents) {
+    const input = document.getElementById("docInput");
+    const btn = document.getElementById("docAddBtn");
+    const chips = document.getElementById("docChips");
+    if (input && btn && chips) {
+      const doAdd = () => {
+        const val = input.value.trim();
+        if (!val) return;
+        const norm = normalizeDocument(val);
+        if (!appState.documents.includes(norm)) {
+          appState.documents.push(norm);
+        }
+        input.value = "";
+        renderDocChips(chips);
+        updatePreview();
+      };
+      btn.addEventListener("click", doAdd);
+      input.addEventListener("keydown", e => {
+        if (e.key === "Enter") { e.preventDefault(); doAdd(); }
+      });
+      renderDocChips(chips);
+    }
+  }
+
+  // Options Group (Toggles)
+  const optGrp = createGroup("Options");
+  optGrp.appendChild(createToggleRow(
+    "Include TAT Line",
+    "Show turnaround time statement",
+    s.tat !== false,
+    val => { s.tat = val; updatePreview(); }
+  ));
+  optGrp.appendChild(createToggleRow(
+    "Charges & Inspection Line",
+    "Show charges applicable warning",
+    s.charges !== false,
+    val => { s.charges = val; updatePreview(); }
+  ));
+  optGrp.appendChild(createToggleRow(
+    "Original Copy Warning Line",
+    "Show keep endorsed copy recommendation",
+    s.originalCopy !== false,
     val => { s.originalCopy = val; updatePreview(); }
   ));
   host.appendChild(optGrp);
