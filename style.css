@@ -164,6 +164,29 @@ button {
   flex-shrink: 0;
 }
 
+.vahan-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 14px;
+  padding: 5px 12px;
+  background: rgba(46, 204, 113, 0.2);
+  border: 1px solid rgba(46, 204, 113, 0.4);
+  border-radius: 20px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  letter-spacing: 0.3px;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.vahan-link-btn:hover {
+  background: rgba(46, 204, 113, 0.4);
+  border-color: rgba(46, 204, 113, 0.6);
+}
+
 /* ========== SEARCH ========== */
 .search-section {
   padding: 16px 20px;
