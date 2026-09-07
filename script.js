@@ -43,6 +43,7 @@ const DOC_MAP = [
   { keys: ["fitness", "fitness certificate"], out: "FITNESS CERTIFICATE" },
   { keys: ["form35", "form 35"], out: "FORM 35" },
   { keys: ["pf", "proposal form", "prosal form", "proposal", "prosal"], out: "PROPOSAL FORM" },
+  { keys: ["end", "endt", "endts", "endorsement form", "endt form", "endts form", "endorsement"], out: "ENDORSEMENT FORM" },
   { keys: ["ncb", "ncb confirmation", "ncb letter", "ncb confirmation letter"], out: "NCB CONFIRMATION LETTER FROM PREVIOUS INSURER" },
   { keys: ["rto", "rto receipt", "rto receipt copy"], out: "RTO RECEIPT" },
   { keys: ["gst", "gst invoice", "gst bill", "gst i"], out: "GST INVOICE" },
@@ -741,6 +742,36 @@ const mailTemplates = [
       "We appreciate your patience and understanding."
     ].join("\n")
   },
+  /* ---------- PAYMENT FAILED ---------- */
+  {
+    id: "payment_failed",
+    header: "PAYMENT FAILED",
+    description: "Inform customer about failed transaction and 7 working days refund to source account",
+    keywords: ["payment failed", "paymenet falaid", "payment fail", "failed payment", "payment failure", "transaction failed", "payment refund", "failed", "fail", "7 days", "7 working days"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is in reference to your recent transaction.",
+      "",
+      "Upon checking your payment details, we observed that the transaction has failed.",
+      "",
+      "We would like to inform you that if any amount has been debited from your account, it will be refunded back to the same source account within 7 working days.",
+      "",
+      "We are proceeding with the closure of this request, as the necessary details have been shared.",
+      "",
+      "We appreciate your understanding in this regard."
+    ].join("\n")
+  },
+  /* ---------- CHALLAN / VAHAN UPDATE ---------- */
+  {
+    id: "challan_vahan_update",
+    header: "CHALLAN / VAHAN UPDATE",
+    description: "Request RC, Aadhaar, PAN for Vahan update and challan contest/reimbursement process",
+    keywords: ["challan", "challan mail", "challan reimbursement", "vahan challan", "traffic challan", "challan update", "challan claim", "upi reimbursement", "challan vahan", "mparivahan challan"],
+    type: "selectable",
+    defaultSelections: { showExactDate: false }
+  },
   /* ---------- BANK STATEMENT ---------- */
   {
     id: "bank_statement",
@@ -1067,6 +1098,7 @@ function buildPreview() {
       case "sbi_ot": baseText = buildSbiOt(); break;
       case "topup_not_possible": baseText = buildTopupNotPossible(); break;
       case "vehicle_subtype_confirmation": baseText = buildVehicleSubtypeConfirmation(); break;
+      case "challan_vahan_update": baseText = buildChallanVahanUpdate(); break;
       default: baseText = tpl.body || ""; break;
     }
   }
@@ -1976,6 +2008,7 @@ function expandAbbreviations(str) {
   res = res.replace(/\brsa\b/gi, "Roadside Assistance (RSA)");
   res = res.replace(/\b(mmv|mv)\b/gi, "Make, Model & Variant");
   res = res.replace(/\b(comp|compre)\b/gi, "comprehensive policy");
+  res = res.replace(/\b(endt|endts)\b/gi, "endorsement");
   return res;
 }
 
@@ -2479,6 +2512,38 @@ function buildVehicleSubtypeConfirmation() {
   return parts.join("\n\n");
 }
 
+/* ---------- CHALLAN / VAHAN UPDATE ---------- */
+function buildChallanVahanUpdate() {
+  const s = appState.sectionSelections;
+  const showExact = !!s.showExactDate;
+  let tatText = "10 days";
+  if (showExact) {
+    const target = addDays(new Date(), 10);
+    tatText = `10 days (time till ${formatDateDDMonthYYYY(target)})`;
+  }
+
+  const parts = [
+    "Greetings from PolicyBazaar.com!",
+    "",
+    "This is in reference to your request regarding the challan issued due to the policy not reflecting on the mParivahan/Vahan portal.",
+    "",
+    "To proceed further with updating your policy on the Vahan portal, we kindly request you to share the following document(s):",
+    "\u2022 RC (Registration Certificate)",
+    "\u2022 Aadhaar Card",
+    "\u2022 PAN Card",
+    "",
+    `We request you to kindly allow us ${tatText} to process this and provide you with a status update.`,
+    "",
+    "Regarding your challan resolution:",
+    "1. Once the policy is successfully updated on Vahan, you can contest/claim against the challan with the traffic authorities, as your insurance was active at the time of violation. This will help get the challan cancelled/waived off.",
+    "2. If the challan is not waived off, you may pay the fine and share the payment receipt along with your UPI ID with us, and we will reimburse the amount to you.",
+    "",
+    "We appreciate your understanding and cooperation."
+  ];
+
+  return parts.join("\n");
+}
+
 /* ---------- TAT ALREADY SHARED ---------- */
 function buildTatAlreadyShared() {
   const s = appState.sectionSelections;
@@ -2590,6 +2655,7 @@ function renderControls() {
     case "sbi_ot": renderSbiOtControls(host); break;
     case "topup_not_possible": renderTopupNotPossibleControls(host); break;
     case "vehicle_subtype_confirmation": renderVehicleSubtypeConfirmationControls(host); break;
+    case "challan_vahan_update": renderChallanVahanUpdateControls(host); break;
   }
 
   renderExtraNoteControls(host);
@@ -4907,6 +4973,22 @@ function renderTopupNotPossibleControls(host) {
   host.appendChild(grp);
 }
 
+/* ---------- CHALLAN / VAHAN UPDATE Controls ---------- */
+function renderChallanVahanUpdateControls(host) {
+  const s = appState.sectionSelections;
+  const grp = createGroup("Date Options");
+  grp.appendChild(createToggleRow(
+    "Show Exact Date",
+    "Add exact calendar date after 10-day timeline (time till DD-Month-YYYY)",
+    !!s.showExactDate,
+    val => {
+      s.showExactDate = val;
+      updatePreview();
+    }
+  ));
+  host.appendChild(grp);
+}
+
 /* ---------- Helpers ---------- */
 function createGroup(title) {
   const wrap = document.createElement("div");
@@ -5550,8 +5632,13 @@ function closePrivateNotes() {
   modal.setAttribute("aria-hidden", "true");
 }
 
+const BAJAJ_CREDENTIALS = {
+  id: "operation.policybazar01@general.bajajgeneral.com",
+  word: "Pk@74085497576"
+};
+
 async function copyBajajPortalId() {
-  const value = document.getElementById("bajajPortalId").textContent.trim();
+  const value = BAJAJ_CREDENTIALS.id;
   let copied = false;
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -5563,7 +5650,23 @@ async function copyBajajPortalId() {
   } catch (error) {
     copied = fallbackCopy(value);
   }
-  showToast(copied ? "Portal ID copied" : "Unable to copy portal ID", copied ? "success" : "error");
+  showToast(copied ? "ID copied" : "Unable to copy", copied ? "success" : "error");
+}
+
+async function copyBajajWord() {
+  const value = BAJAJ_CREDENTIALS.word;
+  let copied = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(value);
+      copied = true;
+    } else {
+      copied = fallbackCopy(value);
+    }
+  } catch (error) {
+    copied = fallbackCopy(value);
+  }
+  showToast(copied ? "Word copied" : "Unable to copy", copied ? "success" : "error");
 }
 
 /* =========================================================
@@ -5656,6 +5759,7 @@ function init() {
   const privateNotesModal = document.getElementById("privateNotesModal");
   document.getElementById("closePrivateNotesBtn").addEventListener("click", closePrivateNotes);
   document.getElementById("copyBajajIdBtn").addEventListener("click", copyBajajPortalId);
+  document.getElementById("copyBajajWordBtn").addEventListener("click", copyBajajWord);
   document.getElementById("privateNotesTrigger").addEventListener("dblclick", openPrivateNotes);
   privateNotesModal.addEventListener("click", e => {
     if (e.target === privateNotesModal) closePrivateNotes();
