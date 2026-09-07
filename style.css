@@ -1721,6 +1721,14 @@ body {
   font-family: inherit;
 }
 
+.private-note-masked {
+  flex: 1;
+  color: #8fa0b5;
+  letter-spacing: 3px;
+  font-size: 14px;
+  user-select: none;
+}
+
 .private-copy-btn {
   padding: 5px 9px;
   border: 1px solid #c8d9eb;
