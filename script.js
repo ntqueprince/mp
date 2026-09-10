@@ -2059,11 +2059,12 @@ function buildClosure() {
   const manual = (appState.manualText || "").trim();
   const warningActive = appState.sectionSelections.claimWarning;
 
+
   let closureParagraph = "";
   if (warningActive) {
-    closureParagraph = "We would like to inform you that, as per our telephonic conversation, we are proceeding with the closure of this request for now.";
+    closureParagraph = `We would like to inform you that, as per the telephonic conversation, we are proceeding with the closure of this request for now.`;
   } else {
-    closureParagraph = "We would like to inform you that, as per our telephonic conversation, we are proceeding with the closure of this request as your query has been addressed.";
+    closureParagraph = `We would like to inform you that, as per the telephonic conversation, we are proceeding with the closure of this request as your query has been addressed.`;
   }
 
   if (manual) {
@@ -2080,15 +2081,15 @@ function buildClosure() {
     if (isMapped) {
       const polished = polishConcern(manual);
       if (warningActive) {
-        closureParagraph = `We would like to inform you that, as per our telephonic conversation regarding your query/request for ${polished}, we are proceeding with the closure of this request for now.`;
+        closureParagraph = `We would like to inform you that, as per the telephonic conversation regarding your query/request for ${polished}, we are proceeding with the closure of this request for now.`;
       } else {
-        closureParagraph = `We would like to inform you that, as per our telephonic conversation regarding your query/request for ${polished}, we are proceeding with the closure of this request as the necessary details have been shared and you do not wish to proceed further.`;
+        closureParagraph = `We would like to inform you that, as per the telephonic conversation regarding your query/request for ${polished}, we are proceeding with the closure of this request as the necessary details have been shared and you do not wish to proceed further.`;
       }
     } else {
       if (warningActive) {
-        closureParagraph = `We would like to inform you that, as per our telephonic conversation, we are proceeding with the closure of this request for now.\n\n${manual}`;
+        closureParagraph = `We would like to inform you that, as per the telephonic conversation, we are proceeding with the closure of this request for now.\n\n${manual}`;
       } else {
-        closureParagraph = `We would like to inform you that, as per our telephonic conversation, we are proceeding with the closure of this request as your query has been addressed.\n\n${manual}`;
+        closureParagraph = `We would like to inform you that, as per the telephonic conversation, we are proceeding with the closure of this request as your query has been addressed.\n\n${manual}`;
       }
     }
   }
@@ -4330,6 +4331,7 @@ function renderClosureControls(host) {
 
   const s = appState.sectionSelections;
   const optGrp = createGroup("Options");
+
   optGrp.appendChild(createToggleRow(
     "Incorrect Details / Claim Warning",
     "Include warning that incorrect policy details may affect claim settlement",
