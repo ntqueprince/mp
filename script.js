@@ -398,7 +398,7 @@ const mailTemplates = [
     description: "Post-issuance policy cancellation process",
     keywords: ["cancellation", "cancel", "post issuance cancel", "post issuance cancellation", "post issunce cancel", "post issunce cancellation", "118", "alt policy", "alternate policy", "alternative policy", "alternative", "neft", "refund details", "bank details", "written consent", "cancelled cheque", "bank passbook", "package policy", "documents", "docs", "rc", "pyp", "aadhar", "pan", "dl", "noc", "cng"],
     type: "selectable",
-    defaultSelections: { irdaiNote: false, consent: false, alternate: true, alternateMayBe: false, neft: false, documents: false, cancellationExactDate: false }
+    defaultSelections: { irdaiNote: false, consent: false, alternate: true, alternateMayBe: false, neft: false, documents: false, cancellationExactDate: true }
   },
 
   /* ---------- 7. CHARGEBACK REVERSAL ---------- */
@@ -1153,6 +1153,7 @@ function buildNationalDoubleDeductionEmail() {
     "Hi Rajendra Sir,",
     "",
     `Kindly help with the approval of Rs. ${amount}/- because the payment was deducted twice.`,
+    `Policy Number: ${policyNumber}`,
     `Order Id: ${orderId}`,
     `Booking ID: ${bookingId}`,
     "",
@@ -1178,6 +1179,8 @@ function buildFourWOrderIdEmail() {
     "Hi Chandan Sir,",
     "",
     "Please confirm the order ID against which the policy has been issued.",
+    `Policy Number: ${policyNumber}`,
+    `Booking ID: ${bookingId}`,
     "",
     "PFA",
     "Attachment: BMS PG Screenshot (Required)",
@@ -1201,6 +1204,7 @@ function buildSbiPolicyIssuanceEmail() {
     "Hi Team,",
     "",
     "Please issue this policy.",
+    policyNumber ? `Policy Number: ${policyNumber}` : "",
     registrationNumber ? `Registration Number: ${registrationNumber}` : "",
     "",
     "PFA Aadhaar, PAN, RC and Feedfile.",
@@ -1285,6 +1289,8 @@ function buildBajajDoubleDeductionEmail() {
     "Hi Shweta Ma'am,",
     "",
     `Please approve the refund of Rs. ${amount}.00 due to a double deduction on the same policy.`,
+    `Policy Number: ${policyNumber}`,
+    `Booking ID: ${bookingId}`,
     `Order No.: ${orderNo}`,
     "",
     "PFA",
@@ -1319,6 +1325,8 @@ function buildDoubleDeductionEmail() {
       "Hi Chandan Sir,",
       "",
       "Please confirm the booking ID against which the policy has been issued.",
+    `Policy Number: ${policyNumber}`,
+    `Booking ID: ${bookingId}`,
       "",
       "PFA",
       "",
@@ -1335,6 +1343,8 @@ function buildDoubleDeductionEmail() {
     "Hi Rajendra Sir,",
     "",
     `Kindly help with the approval of Rs. ${amount}/- as the payment was deducted twice.`,
+    `Policy Number: ${policyNumber}`,
+    `Booking ID: ${bookingId}`,
     `Order Id: ${orderId}`,
     "",
     "PFA",
@@ -1685,7 +1695,6 @@ function buildOwnershipTransfer() {
     parts.push(
       docsStr +
       "New Owner Details Required:\n" +
-      "\u2022 Insured Name\n" +
       "\u2022 Address\n" +
       "\u2022 Email ID\n" +
       "\u2022 Mobile Number\n" +
@@ -1718,7 +1727,6 @@ function buildOwnershipTransfer() {
 
     parts.push(
       "Please also share the following details of the new owner:\n\n" +
-      "\u2022 Insured Name\n" +
       "\u2022 Address\n" +
       "\u2022 Email ID\n" +
       "\u2022 Mobile Number\n" +
@@ -1867,7 +1875,10 @@ function buildCancellation() {
     parts.push("However, we kindly request you to provide the following:\n\n" + formatted.join("\n"));
   }
 
-  const cancellationTimeline = appState.sectionSelections.cancellationExactDate
+  const hasPendingRequirements = items.length > 0;
+  const showExactDate = appState.sectionSelections.cancellationExactDate && !hasPendingRequirements;
+
+  const cancellationTimeline = showExactDate
     ? `The cancellation process typically takes 10 days (till ${formatDateDDMonthYYYY(addDays(new Date(), 10))}).`
     : "The cancellation process typically takes 10 days.";
 
@@ -2277,7 +2288,7 @@ function buildSbiOt() {
       "OPTION 1: For Ownership Transfer",
       "",
       otDocs + "New Owner Details:\n" +
-      "• Insured Name\n• Address\n• Email ID\n• Mobile Number\n• Date of Birth (DOB)\n• Marital Status\n• Nominee Name\n• Nominee DOB\n• Nominee Relationship with the Insured",
+      "• Address\n• Email ID\n• Mobile Number\n• Date of Birth (DOB)\n• Marital Status\n• Nominee Name\n• Nominee DOB\n• Nominee Relationship with the Insured",
       "",
       "OPTION 2: For Name Correction",
       "",
@@ -2290,7 +2301,6 @@ function buildSbiOt() {
     }
 
     docBlock += "\n\nNew Owner Details:\n" +
-      "\u2022 Insured Name\n" +
       "\u2022 Address\n" +
       "\u2022 Email ID\n" +
       "\u2022 Mobile Number\n" +
@@ -5253,7 +5263,7 @@ async function copyMail() {
   const card = document.getElementById("previewCard");
   // Normal previews may include visual-only badges, so copy from the raw builder.
   let text = appState.previewEditing
-    ? (card.textContent || "")
+    ? (card.innerText || "")
     : (appState.manualPreviewOverride !== null ? appState.manualPreviewOverride : buildPreview());
   text = text.replace(/\r\n/g, "\n").trim();
   if (getActiveTemplate()?.category === "EMAIL") {
@@ -5830,7 +5840,7 @@ function init() {
     if (appState.previewEditing) {
       appState.previewEditing = false;
       card.setAttribute("contenteditable", "false");
-      appState.manualPreviewOverride = card.textContent;
+      appState.manualPreviewOverride = card.innerText;
       updatePreview(false);
     }
   });
