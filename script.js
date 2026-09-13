@@ -742,6 +742,21 @@ const mailTemplates = [
       "We appreciate your patience and understanding."
     ].join("\n")
   },
+  /* ---------- GOOD FEEDBACK ---------- */
+  {
+    id: "good_feedback",
+    header: "GOOD FEEDBACK",
+    description: "Thank customer for positive feedback",
+    keywords: ["good feedback", "positive feedback", "happy customer", "satisfied", "thank you feedback", "appreciation", "feedback", "good", "positive"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "Thank you for your valuable feedback! We truly appreciate your kind words and your trust in PolicyBazaar.",
+      "",
+      "Should you need any assistance in the future, please feel free to reach out. We are always happy to help!"
+    ].join("\n")
+  },
   /* ---------- PAYMENT FAILED ---------- */
   {
     id: "payment_failed",
@@ -1325,8 +1340,8 @@ function buildDoubleDeductionEmail() {
       "Hi Chandan Sir,",
       "",
       "Please confirm the booking ID against which the policy has been issued.",
-    `Policy Number: ${policyNumber}`,
-    `Booking ID: ${bookingId}`,
+      `Policy Number: ${policyNumber}`,
+      `Booking ID: ${bookingId}`,
       "",
       "PFA",
       "",
@@ -3622,7 +3637,10 @@ function renderDocChips(host) {
     rm.textContent = "x";
     rm.addEventListener("click", () => {
       appState.documents.splice(idx, 1);
-      renderDocChips(host);
+      if (appState.activeTemplateId === "m_parivahan_mail" && appState.documents.length === 0) {
+        appState.sectionSelections.showExactDate = true;
+      }
+      renderControls();
       updatePreview();
     });
     chip.appendChild(txt);
@@ -4798,6 +4816,8 @@ function renderMParivahanMailControls(host) {
   const docGrp = createGroup("📄 Documents");
   docGrp.appendChild(createToggleRow("📄 Include Documents", "Adds document request block", !!s.documents, val => {
     s.documents = val;
+    if (!val) s.showExactDate = true;
+    if (val && appState.documents.length > 0) s.showExactDate = false;
     renderControls();
     updatePreview();
   }));
@@ -4826,7 +4846,8 @@ function renderMParivahanMailControls(host) {
             appState.documents.push(norm);
           }
           input.value = "";
-          renderDocChips(chips);
+          s.showExactDate = false;
+          renderControls();
           updatePreview();
         };
         btn.addEventListener("click", doAdd);
