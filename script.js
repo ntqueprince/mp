@@ -483,6 +483,21 @@ const mailTemplates = [
       "We request you to kindly share the suitable timing to connect with you on your pending concern. Alternatively, you can also reach us at 1800-258-5970."
     ].join("\n")
   },
+  /* ---------- SHARE YOUR CONCERN ---------- */
+  {
+    id: "share_your_concern",
+    header: "SHARE YOUR CONCERN",
+    description: "Request the customer to share complete concern details",
+    keywords: ["share concern", "share your concern", "complete concern", "incomplete concern", "concern details", "details of concern", "query details"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your email.",
+      "",
+      "We request you to kindly share the complete details of your concern so that we may assist you further."
+    ].join("\n")
+  },
   /* ---------- 8. COMPLETE MISMATCH ---------- */
   {
     id: "complete_mismatch",
@@ -490,7 +505,7 @@ const mailTemplates = [
     description: "Registration, chassis and engine details all mismatched",
     keywords: ["complete mismatch", "complete miss match", "total mismatch", "total miss match", "mismatch", "missmatch", "miss match", "all details mismatch", "details mismatch", "reg chassis engine mismatch", "complete details mismatch", "multiple mismatch", "multiple miss match"],
     type: "selectable",
-    defaultSelections: { includeCancellation: true }
+    defaultSelections: { includeCancellation: true, correctionCancellationNotPossible: false }
   },
 
   /* ---------- 9. OD VAHAN ---------- */
@@ -1903,7 +1918,7 @@ function buildCancellation() {
   );
 
   if (appState.sectionSelections.irdaiNote) {
-    parts.push("Note: Alternate should be comprehensive, incase of alternate TP, the later issued policy will be cancelled");
+    parts.push("Note: Alternate should be comprehensive; if it is a TP policy, it must start before the policy proposed for cancellation.");
   }
 
   if (appState.sectionSelections.alternate && isMayBe) {
@@ -2145,6 +2160,17 @@ function buildClosure() {
 /* ---------- COMPLETE MISMATCH ---------- */
 function buildCompleteMismatch() {
   const s = appState.sectionSelections;
+
+  if (s.correctionCancellationNotPossible) {
+    return [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is in reference to your email regarding the Twowheeler Insurance policy.",
+      "",
+      "We regret to inform you that a correction or cancellation cannot be processed due to a mismatch in the complete vehicle details, specifically the Registration No., Chassis No., and Engine No., as per the insurer's response."
+    ].join("\n");
+  }
+
   const parts = [
     "Greetings from PolicyBazaar.com!",
     "",
@@ -4376,6 +4402,22 @@ function renderClosureControls(host) {
 function renderCompleteMismatchControls(host) {
   const grp = createGroup("Options");
   grp.appendChild(createToggleRow(
+    "Correction & Cancellation Not Possible",
+    "Show the insurer-response mail stating that neither correction nor cancellation can be processed",
+    !!appState.sectionSelections.correctionCancellationNotPossible,
+    val => {
+      appState.sectionSelections.correctionCancellationNotPossible = val;
+      renderControls();
+      updatePreview();
+    }
+  ));
+
+  if (appState.sectionSelections.correctionCancellationNotPossible) {
+    host.appendChild(grp);
+    return;
+  }
+
+  grp.appendChild(createToggleRow(
     "Cancellation Details",
     "Include policy cancellation option and administrative fee info",
     !!appState.sectionSelections.includeCancellation,
@@ -5665,6 +5707,73 @@ function closePrivateNotes() {
   modal.setAttribute("aria-hidden", "true");
 }
 
+const NEW_OWNER_DETAIL_FIELDS = [
+  "Registration No", "Email ID", "Owner Name", "Communication Address",
+  "Nominee Name", "Nominee Age", "Salutation", "Mobile No", "Marital Status",
+  "Date of Birth", "State", "City", "Pincode", "Nominee Relationship", "Vehicle Owned By"
+];
+
+function renderOwnerDetailsFields() {
+  const host = document.getElementById("ownerDetailsFields");
+  host.innerHTML = "";
+  const header = document.createElement("div");
+  header.className = "owner-details-table-head";
+  header.innerHTML = "<span>Field Name</span><span>New Value</span>";
+  host.appendChild(header);
+  NEW_OWNER_DETAIL_FIELDS.forEach((field, index) => {
+    const row = document.createElement("div");
+    row.className = "owner-detail-row";
+    row.innerHTML = `<label for="ownerDetail${index}">${field}</label><input id="ownerDetail${index}" type="text" placeholder="Enter new value" autocomplete="off">`;
+    host.appendChild(row);
+  });
+}
+
+function openOwnerDetails() {
+  if (!document.getElementById("ownerDetailsFields").children.length) {
+    renderOwnerDetailsFields();
+  }
+  const modal = document.getElementById("ownerDetailsModal");
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+  document.getElementById("ownerDetail0").focus();
+}
+
+function closeOwnerDetails() {
+  const modal = document.getElementById("ownerDetailsModal");
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function clearOwnerDetails() {
+  document.querySelectorAll("#ownerDetailsFields input").forEach(input => { input.value = ""; });
+  document.getElementById("ownerDetail0").focus();
+}
+
+async function copyOwnerDetails() {
+  const details = NEW_OWNER_DETAIL_FIELDS.map((field, index) => {
+    const value = document.getElementById(`ownerDetail${index}`).value.trim();
+    return value ? `${field}: ${value}` : "";
+  }).filter(Boolean).join(" | ");
+
+  if (!details) {
+    showToast("Add at least one new value", "error");
+    return;
+  }
+
+  let copied = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(details);
+      copied = true;
+    } else {
+      copied = fallbackCopy(details);
+    }
+  } catch (error) {
+    copied = fallbackCopy(details);
+  }
+  showToast(copied ? "Owner details copied" : "Unable to copy details", copied ? "success" : "error");
+}
+
 const BAJAJ_CREDENTIALS = {
   id: "operation.policybazar01@general.bajajgeneral.com",
   word: "Pk@74085497576"
@@ -5774,7 +5883,7 @@ function init() {
 
   // Click the blue header to return to the main mail-search page.
   document.getElementById("appHeader").addEventListener("click", e => {
-    if (appState.isFloating || e.target.closest(".header-actions") || e.target.closest("#privateNotesTrigger")) return;
+    if (appState.isFloating || e.target.closest(".header-actions") || e.target.closest("#privateNotesTrigger") || e.target.closest("#ownerDetailsBtn")) return;
     returnToMailSearch();
   });
 
@@ -5796,6 +5905,16 @@ function init() {
   document.getElementById("privateNotesTrigger").addEventListener("dblclick", openPrivateNotes);
   privateNotesModal.addEventListener("click", e => {
     if (e.target === privateNotesModal) closePrivateNotes();
+  });
+
+  // New owner details quick-copy tool
+  const ownerDetailsModal = document.getElementById("ownerDetailsModal");
+  document.getElementById("ownerDetailsBtn").addEventListener("click", openOwnerDetails);
+  document.getElementById("closeOwnerDetailsBtn").addEventListener("click", closeOwnerDetails);
+  document.getElementById("clearOwnerDetailsBtn").addEventListener("click", clearOwnerDetails);
+  document.getElementById("copyOwnerDetailsBtn").addEventListener("click", copyOwnerDetails);
+  ownerDetailsModal.addEventListener("click", e => {
+    if (e.target === ownerDetailsModal) closeOwnerDetails();
   });
 
   // Preview editing
@@ -5898,6 +6017,10 @@ function init() {
       }
     }
     if (e.key === "Escape") {
+      if (ownerDetailsModal.classList.contains("open")) {
+        closeOwnerDetails();
+        return;
+      }
       if (privateNotesModal.classList.contains("open")) {
         closePrivateNotes();
         return;
