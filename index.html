@@ -25,6 +25,8 @@
           rel="noopener noreferrer" class="vahan-link-btn" title="Open VAHAN Portal" aria-label="Open VAHAN Portal">
           🔗 Vahan
         </a>
+        <button id="ownerDetailsBtn" class="vahan-link-btn owner-details-btn" type="button"
+          title="Add new owner details">👤 New Owner Details</button>
       </div>
 
       <div class="header-actions">
@@ -152,6 +154,24 @@
         <button id="copyBajajWordBtn" class="private-copy-btn" type="button">Copy</button>
       </div>
       <p class="private-notes-hint">Shortcut: Ctrl + Alt + N</p>
+    </section>
+  </div>
+
+  <!-- New owner details quick-copy tool -->
+  <div id="ownerDetailsModal" class="owner-details-modal" aria-hidden="true">
+    <section class="owner-details-dialog" role="dialog" aria-modal="true" aria-labelledby="ownerDetailsTitle">
+      <div class="private-notes-head">
+        <div>
+          <h2 id="ownerDetailsTitle">New Owner Details</h2>
+          <p class="owner-details-subtitle">Fill only the new values, then copy all details together.</p>
+        </div>
+        <button id="closeOwnerDetailsBtn" class="private-notes-close" type="button" aria-label="Close new owner details">×</button>
+      </div>
+      <div id="ownerDetailsFields" class="owner-details-fields"></div>
+      <div class="owner-details-actions">
+        <button id="clearOwnerDetailsBtn" class="btn ghost" type="button">Clear</button>
+        <button id="copyOwnerDetailsBtn" class="btn primary" type="button">Copy All Details</button>
+      </div>
     </section>
   </div>
 
