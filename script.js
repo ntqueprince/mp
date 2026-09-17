@@ -202,7 +202,7 @@ const mailTemplates = [
     header: "BAJAJ EXCESS REFUND",
     category: "EMAIL",
     description: "Bajaj excess amount approval with settlement sheet",
-    keywords: ["bajaj", "bajaj excess refund", "excess refund", "settlement sheet", "excess amount approval"],
+    keywords: ["bajaj", "bajaj excess refund", "excess refund", "settlement sheet", "excess amount approval", "policy number", "vehicle number"],
     type: "dynamic"
   },
   {
@@ -561,19 +561,9 @@ const mailTemplates = [
     id: "pa_nominee",
     header: "PA NOMINEE",
     description: "Standalone PA cover nominee details explanation",
-    keywords: ["pa nominee", "standalone pa", "stand alone pa", "pa policy", "nominee pa", "nominee details", "separate pa", "pa copy", "personal accident nominee", "sa pa nominee"],
-    type: "fixed",
-    body: [
-      "Greetings from PolicyBazaar.com!",
-      "",
-      "This is with reference to your request.",
-      "",
-      "We would like to inform you that you have opted for a Stand-Alone Personal Accident (PA) Cover, and the nominee details are already updated in the respective PA policy.",
-      "",
-      "Since the Personal Accident (PA) Cover has been issued as a separate policy, the nominee details under the PA policy do not impact the vehicle insurance policy.",
-      "",
-      "Please find attached the PA policy copy for your reference."
-    ].join("\n")
+    keywords: ["pa nominee", "standalone pa", "stand alone pa", "pa policy", "nominee pa", "nominee details", "separate pa", "pa copy", "personal accident nominee", "sa pa nominee", "cpa", "cpa correction", "cpa nominee", "cpa in progress"],
+    type: "selectable",
+    defaultSelections: { cpaCorrectionInProgress: false }
   },
 
   /* ---------- 13. RENEWAL CONTACT ---------- */
@@ -1119,6 +1109,7 @@ function buildPreview() {
       case "video_inspection": baseText = buildVideoInspection(); break;
       case "two_w_video_inspection": baseText = buildTwoWVideoInspection(); break;
       case "as_per_rc_no_correction": baseText = buildAsPerRcNoCorrection(); break;
+      case "pa_nominee": baseText = buildPaNominee(); break;
       case "request_closure": baseText = buildClosure(); break;
       case "complete_mismatch": baseText = buildCompleteMismatch(); break;
       case "m_parivahan_mail": baseText = buildMParivahanMail(); break;
@@ -1251,15 +1242,29 @@ function buildBajajExcessRefundEmail() {
   const to = (f.bjTo || "Shweta").trim();
   const amount = (f.bjAmount || "").trim();
   const bookingId = (f.bjBookingId || "").trim();
+  const policyNumber = (f.bjPolicyNumber || "").trim();
+  const vehicleNumber = (f.bjVehicleNumber || "").trim();
   const signature = (f.bjSignature || "Shivang Jaiswal").trim();
+
+  let subject;
+  if (bookingId && policyNumber) {
+    subject = `Excess amount for Booking ID: ${bookingId} :: Policy No: ${policyNumber}`;
+  } else if (policyNumber) {
+    subject = `Excess amount :: Policy No: ${policyNumber}`;
+  } else {
+    subject = `Excess amount for Booking ID: ${bookingId}`;
+  }
+
   return [
     `To: ${to}`,
     "CC: Subhan Sir",
-    `Subject: Excess amount for Booking ID: ${bookingId}`,
+    `Subject: ${subject}`,
     "",
     `Hi ${to},`,
     "",
     `Could you please approve the excess amount of Rs. ${amount} for Booking ID ${bookingId}?`,
+    `Policy Number: ${policyNumber}`,
+    `Vehicle Number: ${vehicleNumber}`,
     "",
     "PFA",
     "Attachment: Settlement Sheet (Required)",
@@ -1462,29 +1467,72 @@ function buildDocsOnly() {
   }
 
   const formattedDocs = getFormattedDocuments();
-  if (s.docRequestHeader !== false) {
-    if (formattedDocs.length > 0) {
-      let docBlock = "We kindly request you to share the following document(s) to proceed further with your request:\n";
-      for (const d of formattedDocs) docBlock += "\n\u2022 " + d;
-      parts.push(docBlock);
-    } else {
-      parts.push("We kindly request you to share the required documents to proceed further with your request.");
-    }
-  } else {
-    if (formattedDocs.length > 0) {
-      let docBlock = "";
-      for (let i = 0; i < formattedDocs.length; i++) {
-        docBlock += (i > 0 ? "\n" : "") + "\u2022 " + formattedDocs[i];
-      }
-      parts.push(docBlock);
-    }
-  }
-
-  if (s.detailsSection && (appState.manualText || "").trim()) {
-    parts.push("Please also share/provide the following details:\n\n" + expandAbbreviations(appState.manualText.trim()));
+  const docDetails = buildDocumentsAndDetailsText({
+    includeDocs: s.documents !== false,
+    includeDetails: s.details || s.detailsSection,
+    formattedDocs,
+    detailsText: appState.manualText,
+    plainDocList: s.docRequestHeader === false
+  });
+  if (docDetails.length > 0) {
+    parts.push(...docDetails);
   }
 
   return parts.join("\n\n");
+}
+
+/* ---------- BUILD DOCUMENTS & DETAILS HELPER ---------- */
+function buildDocumentsAndDetailsText({
+  includeDocs,
+  includeDetails,
+  formattedDocs,
+  detailsText,
+  proposalFormNote = false,
+  plainDocList = false
+}) {
+  const hasDocs = !!includeDocs && formattedDocs && formattedDocs.length > 0;
+  const cleanDetails = (detailsText || "").trim();
+  const hasDetails = !!includeDetails && cleanDetails.length > 0;
+  const parts = [];
+
+  if (plainDocList && hasDocs) {
+    let docBlock = "";
+    for (let i = 0; i < formattedDocs.length; i++) {
+      docBlock += (i > 0 ? "\n" : "") + "\u2022 " + formattedDocs[i];
+    }
+    parts.push(docBlock);
+    if (hasDetails) {
+      parts.push("Please also share/provide the following details:\n\n" + expandAbbreviations(cleanDetails));
+    }
+    return parts;
+  }
+
+  if (hasDocs && hasDetails) {
+    let docBlock = "We kindly request you to share the following documents and details to proceed further with your request:\n";
+    for (const d of formattedDocs) docBlock += "\n\u2022 " + d;
+    parts.push(docBlock);
+    parts.push("Please also share/provide the following details:\n\n" + expandAbbreviations(cleanDetails));
+    if (proposalFormNote && formattedDocs.includes("PROPOSAL FORM")) {
+      parts.push("We request you to kindly fill and share the attached Proposal Form to proceed further with your request.");
+    }
+  } else if (hasDocs) {
+    let docBlock = "We kindly request you to share the following documents to proceed further with your request:\n";
+    for (const d of formattedDocs) docBlock += "\n\u2022 " + d;
+    parts.push(docBlock);
+    if (proposalFormNote && formattedDocs.includes("PROPOSAL FORM")) {
+      parts.push("We request you to kindly fill and share the attached Proposal Form to proceed further with your request.");
+    }
+  } else if (hasDetails) {
+    parts.push("We kindly request you to share the following details to proceed further with your request:\n\n" + expandAbbreviations(cleanDetails));
+  } else if (includeDocs && includeDetails) {
+    parts.push("We kindly request you to share the required documents and details to proceed further with your request.");
+  } else if (includeDocs) {
+    parts.push("We kindly request you to share the required documents to proceed further with your request.");
+  } else if (includeDetails) {
+    parts.push("We kindly request you to share the required details to proceed further with your request.");
+  }
+
+  return parts;
 }
 
 /* ---------- DOCS REQUIRED ---------- */
@@ -1496,12 +1544,14 @@ function buildDocsRequired() {
   ];
 
   const formattedDocs = getFormattedDocuments();
-  if (formattedDocs.length > 0) {
-    let docBlock = "We kindly request you to share the following document(s) to proceed further with your request:\n";
-    for (const d of formattedDocs) docBlock += "\n\u2022 " + d;
-    parts.push(docBlock);
-  } else {
-    parts.push("We kindly request you to share the required documents to proceed further with your request.");
+  const docDetails = buildDocumentsAndDetailsText({
+    includeDocs: s.documents !== false,
+    includeDetails: s.details,
+    formattedDocs,
+    detailsText: appState.manualText
+  });
+  if (docDetails.length > 0) {
+    parts.push(...docDetails);
   }
 
   if (s.tat !== false) {
@@ -1538,15 +1588,15 @@ function buildRF() {
   }
 
   const formattedDocs = getFormattedDocuments();
-  if (s.documents && formattedDocs.length > 0) {
-    const hasProposalForm = formattedDocs.includes("PROPOSAL FORM");
-    let docBlock = "We kindly request you to share the following documents to proceed further with your request:\n";
-    for (const d of formattedDocs) docBlock += "\n\u2022 " + d;
-    parts.push(docBlock);
-
-    if (hasProposalForm) {
-      parts.push("We request you to kindly fill and share the attached Proposal Form to proceed further with your request.");
-    }
+  const docDetails = buildDocumentsAndDetailsText({
+    includeDocs: s.documents,
+    includeDetails: s.details,
+    formattedDocs,
+    detailsText: appState.manualText,
+    proposalFormNote: true
+  });
+  if (docDetails.length > 0) {
+    parts.push(...docDetails);
   }
 
   if (s.updateDate) {
@@ -1678,6 +1728,36 @@ function buildRefund() {
     `We would like to inform you that your refund of Rs. ${amt} has been processed successfully.`,
     "",
     `The refund amount is expected to reflect within ${days} ${unit} in ${accountWording}.`
+  ].join("\n");
+}
+
+/* ---------- PA NOMINEE ---------- */
+function buildPaNominee() {
+  const s = appState.sectionSelections;
+  if (s.cpaCorrectionInProgress) {
+    return [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your request.",
+      "",
+      "We would like to inform you that the correction request for your Compulsory Personal Accident (CPA) / Stand-Alone PA policy is already under process, and the concerned team will update you regarding the same.",
+      "",
+      "Since the Personal Accident (PA) Cover has been issued as a separate policy, this correction is not required in your vehicle insurance policy.",
+      "",
+      "We appreciate your patience and understanding in this regard."
+    ].join("\n");
+  }
+
+  return [
+    "Greetings from PolicyBazaar.com!",
+    "",
+    "This is with reference to your request.",
+    "",
+    "We would like to inform you that you have opted for a Stand-Alone Personal Accident (PA) Cover, and the nominee details are already updated in the respective PA policy.",
+    "",
+    "Since the Personal Accident (PA) Cover has been issued as a separate policy, the nominee details under the PA policy do not impact the vehicle insurance policy.",
+    "",
+    "Please find attached the PA policy copy for your reference."
   ].join("\n");
 }
 
@@ -1898,6 +1978,10 @@ function buildCancellation() {
     for (const d of formattedDocs) {
       items.push(d);
     }
+  }
+
+  if (appState.sectionSelections.details && (appState.manualText || "").trim()) {
+    items.push("Following details: " + expandAbbreviations(appState.manualText.trim()));
   }
 
   if (items.length > 0) {
@@ -2466,10 +2550,14 @@ function buildMParivahanMail() {
   }
 
   const formattedDocs = getFormattedDocuments();
-  if (s.documents && formattedDocs.length > 0) {
-    let docBlock = "We kindly request you to share the following document(s) to proceed further with your request:\n";
-    for (const d of formattedDocs) docBlock += "\n\u2022 " + d;
-    parts.push(docBlock);
+  const docDetails = buildDocumentsAndDetailsText({
+    includeDocs: s.documents,
+    includeDetails: s.details,
+    formattedDocs,
+    detailsText: appState.manualText
+  });
+  if (docDetails.length > 0) {
+    parts.push(...docDetails);
   }
 
   if (s.tat !== false) {
@@ -2541,10 +2629,14 @@ function buildVehicleSubtypeConfirmation() {
   ];
 
   const formattedDocs = getFormattedDocuments();
-  if (s.documents && formattedDocs.length > 0) {
-    let docBlock = "We kindly request you to share the following document(s) to proceed further with your request:\n";
-    for (const d of formattedDocs) docBlock += "\n\u2022 " + d;
-    parts.push(docBlock);
+  const docDetails = buildDocumentsAndDetailsText({
+    includeDocs: s.documents,
+    includeDetails: s.details,
+    formattedDocs,
+    detailsText: appState.manualText
+  });
+  if (docDetails.length > 0) {
+    parts.push(...docDetails);
   }
 
   parts.push("Kindly confirm the correct vehicle subtype from the attached snapshot.");
@@ -2708,6 +2800,7 @@ function renderControls() {
     case "topup_not_possible": renderTopupNotPossibleControls(host); break;
     case "vehicle_subtype_confirmation": renderVehicleSubtypeConfirmationControls(host); break;
     case "challan_vahan_update": renderChallanVahanUpdateControls(host); break;
+    case "pa_nominee": renderPaNomineeControls(host); break;
   }
 
   renderExtraNoteControls(host);
@@ -2837,6 +2930,8 @@ function renderBajajExcessRefundControls(host) {
   const grp = createGroup("Bajaj Excess Refund Details");
   const fields = [
     ["bjTo", "To / Name", "e.g. Shweta"],
+    ["bjPolicyNumber", "Policy Number", "Enter policy number"],
+    ["bjVehicleNumber", "Vehicle Number", "e.g. DL01AB1234"],
     ["bjAmount", "Excess Amount", "e.g. 568"],
     ["bjBookingId", "Booking ID", "Enter booking ID"],
     ["bjSignature", "Your Name", "Shivang Jaiswal"]
@@ -3077,41 +3172,15 @@ function renderGatepassNationalCancellationControls(host) {
 function renderDocsOnlyControls(host) {
   const s = appState.sectionSelections;
 
-  // Documents Group
-  const docGrp = createGroup("Documents");
-  const docWrap = document.createElement("div");
-  docWrap.style.marginTop = "8px";
-  docWrap.innerHTML = `
-    <div class="doc-input-row">
-      <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. rc, pyp, saod, poi"/>
-      <button type="button" class="doc-add-btn" id="docAddBtn">Add</button>
-    </div>
-    <div class="doc-chips" id="docChips"></div>
-  `;
-  docGrp.appendChild(docWrap);
+  // Documents & Details Group
+  const docGrp = createGroup("📄 Documents & Details");
+  renderDocumentsAndDetailsControls(docGrp, {
+    onDetailsChange: val => {
+      s.detailsSection = val;
+    }
+  });
   host.appendChild(docGrp);
-
-  const input = document.getElementById("docInput");
-  const btn = document.getElementById("docAddBtn");
-  const chips = document.getElementById("docChips");
-  if (input && btn && chips) {
-    const doAdd = () => {
-      const val = input.value.trim();
-      if (!val) return;
-      const norm = normalizeDocument(val);
-      if (!appState.documents.includes(norm)) {
-        appState.documents.push(norm);
-      }
-      input.value = "";
-      renderDocChips(chips);
-      updatePreview();
-    };
-    btn.addEventListener("click", doAdd);
-    input.addEventListener("keydown", e => {
-      if (e.key === "Enter") { e.preventDefault(); doAdd(); }
-    });
-    renderDocChips(chips);
-  }
+  if (s.documents !== false) wireDocInputEvents();
 
   // Options Group (Toggles)
   const optGrp = createGroup("Options");
@@ -3133,33 +3202,7 @@ function renderDocsOnlyControls(host) {
     s.docRequestHeader !== false,
     val => { s.docRequestHeader = val; updatePreview(); }
   ));
-  optGrp.appendChild(createToggleRow(
-    "Include Custom Details",
-    "Request additional details or information",
-    !!s.detailsSection,
-    val => {
-      s.detailsSection = val;
-      renderControls();
-      updatePreview();
-    }
-  ));
   host.appendChild(optGrp);
-
-  // If details toggle is active, show the details textarea
-  if (s.detailsSection) {
-    const detailsGrp = createGroup("Custom Details");
-    const ta = document.createElement("textarea");
-    ta.className = "text-area";
-    ta.placeholder = "e.g. written consent with policy number...";
-    ta.value = appState.manualText || "";
-    ta.rows = 4;
-    ta.addEventListener("input", () => {
-      appState.manualText = ta.value;
-      updatePreview();
-    });
-    detailsGrp.appendChild(ta);
-    host.appendChild(detailsGrp);
-  }
 }
 
 function renderQuickTemplates() {
@@ -3249,41 +3292,12 @@ function openEmailFolderModal(templates) {
 /* ---------- DOCS REQUIRED Controls ---------- */
 function renderDocsRequiredControls(host) {
   const s = appState.sectionSelections;
+  if (s.documents === undefined) s.documents = true;
 
-  const docGrp = createGroup("Documents");
-  const docWrap = document.createElement("div");
-  docWrap.style.marginTop = "8px";
-  docWrap.innerHTML = `
-    <div class="doc-input-row">
-      <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. rc, pyp, aadhar"/>
-      <button type="button" class="doc-add-btn" id="docAddBtn">Add</button>
-    </div>
-    <div class="doc-chips" id="docChips"></div>
-  `;
-  docGrp.appendChild(docWrap);
+  const docGrp = createGroup("📄 Documents & Details");
+  renderDocumentsAndDetailsControls(docGrp);
   host.appendChild(docGrp);
-
-  const input = document.getElementById("docInput");
-  const btn = document.getElementById("docAddBtn");
-  const chips = document.getElementById("docChips");
-  if (input && btn && chips) {
-    const doAdd = () => {
-      const val = input.value.trim();
-      if (!val) return;
-      const norm = normalizeDocument(val);
-      if (!appState.documents.includes(norm)) {
-        appState.documents.push(norm);
-      }
-      input.value = "";
-      renderDocChips(chips);
-      updatePreview();
-    };
-    btn.addEventListener("click", doAdd);
-    input.addEventListener("keydown", e => {
-      if (e.key === "Enter") { e.preventDefault(); doAdd(); }
-    });
-    renderDocChips(chips);
-  }
+  if (s.documents !== false) wireDocInputEvents();
 
   const optGrp = createGroup("Options");
   optGrp.appendChild(createToggleRow(
@@ -3311,50 +3325,11 @@ function renderDocsRequiredControls(host) {
 function renderVehicleSubtypeConfirmationControls(host) {
   const s = appState.sectionSelections;
 
-  // Documents toggle + input
-  const docGrp = createGroup("\u{1F4C4} Documents");
-  docGrp.appendChild(createToggleRow("\u{1F4C4} Include Documents", "Request documents along with subtype confirmation", !!s.documents, val => {
-    s.documents = val;
-    renderControls();
-    updatePreview();
-  }));
-  if (s.documents) {
-    const docWrap = document.createElement("div");
-    docWrap.style.marginTop = "8px";
-    docWrap.innerHTML = `
-      <div class="doc-input-row">
-        <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. rc, aadhar, pyp"/>
-        <button type="button" class="doc-add-btn" id="docAddBtn">Add</button>
-      </div>
-      <div class="doc-chips" id="docChips"></div>
-    `;
-    docGrp.appendChild(docWrap);
-  }
+  // Documents & Details Group
+  const docGrp = createGroup("📄 Documents & Details");
+  renderDocumentsAndDetailsControls(docGrp);
   host.appendChild(docGrp);
-
-  if (s.documents) {
-    const input = document.getElementById("docInput");
-    const btn = document.getElementById("docAddBtn");
-    const chips = document.getElementById("docChips");
-    if (input && btn && chips) {
-      const doAdd = () => {
-        const val = input.value.trim();
-        if (!val) return;
-        const norm = normalizeDocument(val);
-        if (!appState.documents.includes(norm)) {
-          appState.documents.push(norm);
-        }
-        input.value = "";
-        renderDocChips(chips);
-        updatePreview();
-      };
-      btn.addEventListener("click", doAdd);
-      input.addEventListener("keydown", e => {
-        if (e.key === "Enter") { e.preventDefault(); doAdd(); }
-      });
-      renderDocChips(chips);
-    }
-  }
+  if (s.documents) wireDocInputEvents();
 
   // Options Group (Toggles)
   const optGrp = createGroup("Options");
@@ -3390,29 +3365,18 @@ function renderRFControls(host) {
   grp1.appendChild(createToggleRow("Forward to Insurer", "Forwarded to insurer for the update (for general query / M-Parivahan)", !!s.concernedTeam, val => { s.concernedTeam = val; updatePreview(); }));
   host.appendChild(grp1);
 
-  /* Documents */
-  const docGrp = createGroup("📄 Documents");
-  docGrp.appendChild(createToggleRow("📄 Include Documents", "Adds document request block", s.documents, val => {
-    s.documents = val;
-    if (val) {
-      s.updateDate = false; // auto-off per rules
+  /* Documents & Details */
+  const docGrp = createGroup("📄 Documents & Details");
+  renderDocumentsAndDetailsControls(docGrp, {
+    onDocChange: val => {
+      if (val) s.updateDate = false; // auto-off per rules
+    },
+    onDetailsChange: val => {
+      if (val) s.updateDate = false;
     }
-    renderControls();
-    updatePreview();
-  }));
-  if (s.documents) {
-    const docWrap = document.createElement("div");
-    docWrap.style.marginTop = "8px";
-    docWrap.innerHTML = `
-      <div class="doc-input-row">
-        <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. rc, aadhar, pyp"/>
-        <button type="button" class="doc-add-btn" id="docAddBtn">Add</button>
-      </div>
-      <div class="doc-chips" id="docChips"></div>
-    `;
-    docGrp.appendChild(docWrap);
-  }
+  });
   host.appendChild(docGrp);
+  if (s.documents) wireDocInputEvents();
 
   /* Update Date + Working */
   const dateGrp = createGroup("Timing");
@@ -3588,27 +3552,7 @@ function renderRFControls(host) {
 
   // Wire up docs
   if (s.documents) {
-    const input = document.getElementById("docInput");
-    const btn = document.getElementById("docAddBtn");
-    const chips = document.getElementById("docChips");
-    if (input && btn && chips) {
-      const doAdd = () => {
-        const val = input.value.trim();
-        if (!val) return;
-        const norm = normalizeDocument(val);
-        if (!appState.documents.includes(norm)) {
-          appState.documents.push(norm);
-        }
-        input.value = "";
-        renderDocChips(chips);
-        updatePreview();
-      };
-      btn.addEventListener("click", doAdd);
-      input.addEventListener("keydown", e => {
-        if (e.key === "Enter") { e.preventDefault(); doAdd(); }
-      });
-      renderDocChips(chips);
-    }
+    wireDocInputEvents();
   }
 }
 
@@ -3647,6 +3591,89 @@ function renderKycAddressToggle(parentEl) {
     parentEl.appendChild(wrap);
   } else {
     s.kycAddressOption = false;
+  }
+}
+
+function renderDocumentsAndDetailsControls(docGrp, {
+  docLabel = "📄 Include Documents",
+  docDesc = "Adds document request block",
+  detailsLabel = "📝 Include Details",
+  detailsDesc = "Adds details request block",
+  onDocChange,
+  onDetailsChange
+} = {}) {
+  const s = appState.sectionSelections;
+
+  docGrp.appendChild(createToggleRow(docLabel, docDesc, !!s.documents, val => {
+    s.documents = val;
+    if (onDocChange) onDocChange(val);
+    renderControls();
+    updatePreview();
+  }));
+
+  if (s.documents) {
+    const docWrap = document.createElement("div");
+    docWrap.style.marginTop = "8px";
+    docWrap.innerHTML = `
+      <div class="doc-input-row">
+        <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. rc, aadhar, pyp"/>
+        <button type="button" class="doc-add-btn" id="docAddBtn">Add</button>
+      </div>
+      <div class="doc-chips" id="docChips"></div>
+    `;
+    docGrp.appendChild(docWrap);
+  }
+
+  docGrp.appendChild(createToggleRow(detailsLabel, detailsDesc, !!s.details, val => {
+    s.details = val;
+    if (onDetailsChange) onDetailsChange(val);
+    renderControls();
+    updatePreview();
+  }));
+
+  if (s.details) {
+    const detailsWrap = document.createElement("div");
+    detailsWrap.style.marginTop = "8px";
+    const ta = document.createElement("textarea");
+    ta.className = "text-area";
+    ta.placeholder = "Enter details to request e.g. correct spelling of owner name, nominee DOB...";
+    ta.value = appState.manualText || "";
+    ta.rows = 3;
+    ta.style.width = "100%";
+    ta.style.boxSizing = "border-box";
+    ta.addEventListener("input", () => {
+      appState.manualText = ta.value;
+      updatePreview();
+    });
+    detailsWrap.appendChild(ta);
+    docGrp.appendChild(detailsWrap);
+  }
+}
+
+function wireDocInputEvents() {
+  const input = document.getElementById("docInput");
+  const btn = document.getElementById("docAddBtn");
+  const chips = document.getElementById("docChips");
+  if (input && btn && chips) {
+    const doAdd = () => {
+      const val = input.value.trim();
+      if (!val) return;
+      const norm = normalizeDocument(val);
+      if (!appState.documents.includes(norm)) {
+        appState.documents.push(norm);
+      }
+      input.value = "";
+      if (appState.activeTemplateId === "m_parivahan_mail") {
+        appState.sectionSelections.showExactDate = false;
+      }
+      renderDocChips(chips);
+      updatePreview();
+    };
+    btn.addEventListener("click", doAdd);
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") { e.preventDefault(); doAdd(); }
+    });
+    renderDocChips(chips);
   }
 }
 
@@ -3850,27 +3877,11 @@ function renderInsuredPersonChangeControls(host) {
 function renderCancellationControls(host) {
   const s = appState.sectionSelections;
 
-  /* Documents Group */
-  const docGrp = createGroup("📄 Documents");
-  docGrp.appendChild(createToggleRow("📄 Include Documents", "Adds document request block", !!s.documents, val => {
-    s.documents = val;
-    renderControls();
-    updatePreview();
-  }));
-
-  if (s.documents) {
-    const docWrap = document.createElement("div");
-    docWrap.style.marginTop = "8px";
-    docWrap.innerHTML = `
-      <div class="doc-input-row">
-        <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. rc, pyp, aadhar, dl, noc"/>
-        <button type="button" class="doc-add-btn" id="docAddBtn">Add</button>
-      </div>
-      <div class="doc-chips" id="docChips"></div>
-    `;
-    docGrp.appendChild(docWrap);
-  }
+  /* Documents & Details Group */
+  const docGrp = createGroup("📄 Documents & Details");
+  renderDocumentsAndDetailsControls(docGrp);
   host.appendChild(docGrp);
+  if (s.documents) wireDocInputEvents();
 
   const grp = createGroup("Options");
   grp.appendChild(createToggleRow(
@@ -3947,6 +3958,22 @@ function renderCancellationControls(host) {
     }
   }
 }
+/* ---------- PA NOMINEE Controls ---------- */
+function renderPaNomineeControls(host) {
+  const s = appState.sectionSelections;
+  const grp = createGroup("Options");
+  grp.appendChild(createToggleRow(
+    "CPA Correction in Progress",
+    "Inform customer that CPA correction is ongoing & not required in vehicle policy",
+    !!s.cpaCorrectionInProgress,
+    val => {
+      s.cpaCorrectionInProgress = val;
+      updatePreview();
+    }
+  ));
+  host.appendChild(grp);
+}
+
 /* ---------- AS PER RC NO CORRECTION Controls ---------- */
 function renderAsPerRcNoCorrectionControls(host) {
   const grp = createGroup("Options");
@@ -4854,53 +4881,16 @@ function renderMParivahanMailControls(host) {
   grp1.appendChild(createToggleRow("Forwarded Line", "Forwarded request to insurer for M-Parivahan update", s.forwarded !== false, val => { s.forwarded = val; updatePreview(); }));
   host.appendChild(grp1);
 
-  // 2. Documents Group
-  const docGrp = createGroup("📄 Documents");
-  docGrp.appendChild(createToggleRow("📄 Include Documents", "Adds document request block", !!s.documents, val => {
-    s.documents = val;
-    if (!val) s.showExactDate = true;
-    if (val && appState.documents.length > 0) s.showExactDate = false;
-    renderControls();
-    updatePreview();
-  }));
-  if (s.documents) {
-    const docWrap = document.createElement("div");
-    docWrap.style.marginTop = "8px";
-    docWrap.innerHTML = `
-      <div class="doc-input-row">
-        <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. rc, pyp, tp"/>
-        <button type="button" class="doc-add-btn" id="docAddBtn">Add</button>
-      </div>
-      <div class="doc-chips" id="docChips"></div>
-    `;
-    docGrp.appendChild(docWrap);
-
-    setTimeout(() => {
-      const input = document.getElementById("docInput");
-      const btn = document.getElementById("docAddBtn");
-      const chips = document.getElementById("docChips");
-      if (input && btn && chips) {
-        const doAdd = () => {
-          const val = input.value.trim();
-          if (!val) return;
-          const norm = normalizeDocument(val);
-          if (!appState.documents.includes(norm)) {
-            appState.documents.push(norm);
-          }
-          input.value = "";
-          s.showExactDate = false;
-          renderControls();
-          updatePreview();
-        };
-        btn.addEventListener("click", doAdd);
-        input.addEventListener("keydown", e => {
-          if (e.key === "Enter") { e.preventDefault(); doAdd(); }
-        });
-        renderDocChips(chips);
-      }
-    }, 0);
-  }
+  // 2. Documents & Details Group
+  const docGrp = createGroup("📄 Documents & Details");
+  renderDocumentsAndDetailsControls(docGrp, {
+    onDocChange: val => {
+      if (!val) s.showExactDate = true;
+      if (val && appState.documents.length > 0) s.showExactDate = false;
+    }
+  });
   host.appendChild(docGrp);
+  if (s.documents) wireDocInputEvents();
 
   // 3. TAT Options Group
   const tatGrp = createGroup("TAT / Status Update Line");
@@ -5205,7 +5195,7 @@ function selectTemplate(id) {
   if (tpl.id === "rf") {
     appState.sectionSelections = {
       greeting: true, reference: true, forwarded: false,
-      documents: false, updateDate: true, tat: true,
+      documents: false, details: false, updateDate: true, tat: true,
       charges: true, originalCopy: true, ncbNote: false
     };
   } else if (tpl.id === "tat_already_shared") {
@@ -5371,7 +5361,15 @@ async function copyDoubleDeductionSubject() {
   if (appState.activeTemplateId === "excess_amount_email") {
     subject = `Excess amount for Booking ID: ${(f.exBookingId || "").trim()}`.trim();
   } else if (appState.activeTemplateId === "bajaj_excess_refund_email") {
-    subject = `Excess amount for Booking ID: ${(f.bjBookingId || "").trim()}`.trim();
+    const bId = (f.bjBookingId || "").trim();
+    const pol = (f.bjPolicyNumber || "").trim();
+    if (bId && pol) {
+      subject = `Excess amount for Booking ID: ${bId} :: Policy No: ${pol}`;
+    } else if (pol) {
+      subject = `Excess amount :: Policy No: ${pol}`;
+    } else {
+      subject = `Excess amount for Booking ID: ${bId}`.trim();
+    }
   } else if (appState.activeTemplateId === "national_excess_refund_email") {
     subject = `Excess Refund Approval Required : ${(f.neOrderNo || "").trim()}`.trim();
   } else if (appState.activeTemplateId === "bajaj_double_deduction_email") {
