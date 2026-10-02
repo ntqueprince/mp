@@ -941,6 +941,21 @@ const mailTemplates = [
     type: "selectable",
     defaultSelections: { showExactDate: false, odometerPhoto: false }
   },
+  /* ---------- KM TOP UP REQUEST ---------- */
+  {
+    id: "km_topup_request",
+    header: "KM TOP UP REQUEST",
+    description: "Kilometer top-up confirmation (2k to 6k KM), TAT, charges & inspection",
+    keywords: ["km top up", "km topup", "top up request", "topup request", "kilometer top up", "top up", "topup", "2000 km", "3000 km", "4000 km", "5000 km", "6000 km", "shriram top up", "payd top up", "payd km"],
+    type: "selectable",
+    defaultSelections: {
+      showExactDate: false,
+      tat: true,
+      charges: true,
+      originalCopy: true,
+      odometerPhoto: false
+    }
+  },
   /* ---------- ENDORSEMENT TAT ---------- */
   {
     id: "endorsement_tat",
@@ -1118,6 +1133,7 @@ function buildPreview() {
       case "change_not_possible": baseText = buildChangeNotPossible(); break;
       case "sbi_ot": baseText = buildSbiOt(); break;
       case "topup_not_possible": baseText = buildTopupNotPossible(); break;
+      case "km_topup_request": baseText = buildKmTopupRequest(); break;
       case "vehicle_subtype_confirmation": baseText = buildVehicleSubtypeConfirmation(); break;
       case "challan_vahan_update": baseText = buildChallanVahanUpdate(); break;
       default: baseText = tpl.body || ""; break;
@@ -2620,6 +2636,43 @@ function buildTopupNotPossible() {
   return parts.join("\n\n");
 }
 
+/* ---------- KM TOP UP REQUEST ---------- */
+function buildKmTopupRequest() {
+  const s = appState.sectionSelections;
+  const parts = [
+    "Greetings from PolicyBazaar.com!",
+    "This is with reference to your request.",
+    "We would like to apprise you that you can opt for the following kilometer top-up slabs:\n\n" +
+    "\u2022 2,000 KM\n" +
+    "\u2022 3,000 KM\n" +
+    "\u2022 4,000 KM\n" +
+    "\u2022 5,000 KM\n" +
+    "\u2022 6,000 KM",
+    "Kindly confirm your required kilometer top-up so that we can proceed further with your request."
+  ];
+
+  if (s.tat !== false) {
+    const tatLine = s.showExactDate
+      ? `We would like to apprise you that the turnaround time for getting the changes made in your policy copy can take up to 10 days (time till ${formatDateDDMonthYYYY(addDays(new Date(), 10))}).`
+      : "We would like to apprise you that the turnaround time for getting the changes made in your policy copy can take up to 10 days.";
+    parts.push(tatLine);
+  }
+
+  if (s.charges !== false) {
+    parts.push("We would like to update you that there may be charges and inspection applicable, which shall be communicated to you in future communication.");
+  }
+
+  if (s.originalCopy !== false) {
+    parts.push("We request you to kindly keep the Endorsed copy along with your original policy copy for future reference.");
+  }
+
+  if (s.odometerPhoto) {
+    parts.push("We also request you to share the odometer reading photo for further processing.");
+  }
+
+  return parts.join("\n\n");
+}
+
 /* ---------- VEHICLE SUBTYPE CONFIRMATION ---------- */
 function buildVehicleSubtypeConfirmation() {
   const s = appState.sectionSelections;
@@ -2798,6 +2851,7 @@ function renderControls() {
     case "change_not_possible": renderChangeNotPossibleControls(host); break;
     case "sbi_ot": renderSbiOtControls(host); break;
     case "topup_not_possible": renderTopupNotPossibleControls(host); break;
+    case "km_topup_request": renderKmTopupRequestControls(host); break;
     case "vehicle_subtype_confirmation": renderVehicleSubtypeConfirmationControls(host); break;
     case "challan_vahan_update": renderChallanVahanUpdateControls(host); break;
     case "pa_nominee": renderPaNomineeControls(host); break;
@@ -5038,6 +5092,71 @@ function renderTopupNotPossibleControls(host) {
   host.appendChild(grp);
 }
 
+/* ---------- KM TOP UP REQUEST Controls ---------- */
+function renderKmTopupRequestControls(host) {
+  const s = appState.sectionSelections;
+
+  // Options Group (RF Style)
+  const optGrp = createGroup("Options (RF Style)");
+
+  optGrp.appendChild(createToggleRow(
+    "Include TAT Line",
+    "Turnaround time can take up to 10 days",
+    s.tat !== false,
+    val => {
+      s.tat = val;
+      renderControls();
+      updatePreview();
+    }
+  ));
+
+  if (s.tat !== false) {
+    const exactRow = createToggleRow(
+      "Show Exact Date",
+      "Convert 10 days to exact calendar date (time till DD-Month-YYYY)",
+      !!s.showExactDate,
+      val => {
+        s.showExactDate = val;
+        updatePreview();
+      }
+    );
+    exactRow.style.marginTop = "4px";
+    optGrp.appendChild(exactRow);
+  }
+
+  optGrp.appendChild(createToggleRow(
+    "Charges & Inspection Notice",
+    "Include charges and inspection notice (RF standard)",
+    s.charges !== false,
+    val => {
+      s.charges = val;
+      updatePreview();
+    }
+  ));
+
+  optGrp.appendChild(createToggleRow(
+    "Keep Original Copy Notice",
+    "Request to keep endorsed copy along with original policy copy",
+    s.originalCopy !== false,
+    val => {
+      s.originalCopy = val;
+      updatePreview();
+    }
+  ));
+
+  optGrp.appendChild(createToggleRow(
+    "Odometer Reading Photo",
+    "Request photo of current vehicle odometer reading",
+    !!s.odometerPhoto,
+    val => {
+      s.odometerPhoto = val;
+      updatePreview();
+    }
+  ));
+
+  host.appendChild(optGrp);
+}
+
 /* ---------- CHALLAN / VAHAN UPDATE Controls ---------- */
 function renderChallanVahanUpdateControls(host) {
   const s = appState.sectionSelections;
@@ -5129,7 +5248,8 @@ function renderPreviewHTML(text) {
     "cancellation",
     "insured_person_change",
     "as_per_rc_no_correction",
-    "sbi_ot"
+    "sbi_ot",
+    "km_topup_request"
   ].includes(appState.activeTemplateId);
 
   return String(text || "").split("\n").map(line => {
@@ -5711,6 +5831,8 @@ const NEW_OWNER_DETAIL_FIELDS = [
   "Date of Birth", "State", "City", "Pincode", "Nominee Relationship", "Vehicle Owned By"
 ];
 
+let customOwnerFieldCounter = 0;
+
 function renderOwnerDetailsFields() {
   const host = document.getElementById("ownerDetailsFields");
   host.innerHTML = "";
@@ -5718,12 +5840,78 @@ function renderOwnerDetailsFields() {
   header.className = "owner-details-table-head";
   header.innerHTML = "<span>Field Name</span><span>New Value</span>";
   host.appendChild(header);
+
   NEW_OWNER_DETAIL_FIELDS.forEach((field, index) => {
     const row = document.createElement("div");
     row.className = "owner-detail-row";
     row.innerHTML = `<label for="ownerDetail${index}">${field}</label><input id="ownerDetail${index}" type="text" placeholder="Enter new value" autocomplete="off">`;
     host.appendChild(row);
   });
+
+  // Container for dynamic custom fields
+  const customContainer = document.createElement("div");
+  customContainer.id = "customOwnerFieldsContainer";
+  host.appendChild(customContainer);
+
+  // Add field button & quick presets bar
+  const addBar = document.createElement("div");
+  addBar.className = "owner-details-add-wrap";
+  addBar.innerHTML = `
+    <button type="button" class="add-custom-field-btn" id="addOwnerFieldBtn">
+      <span>+</span> Add Custom Field
+    </button>
+    <div class="owner-field-presets">
+      <span class="owner-field-preset-title">Quick add:</span>
+      <button type="button" class="owner-field-preset-btn" data-preset="Chassis Number">+ Chassis Number</button>
+      <button type="button" class="owner-field-preset-btn" data-preset="Engine Number">+ Engine Number</button>
+    </div>
+  `;
+  host.appendChild(addBar);
+
+  addBar.querySelector("#addOwnerFieldBtn").addEventListener("click", () => {
+    addCustomOwnerFieldRow("");
+  });
+
+  addBar.querySelectorAll(".owner-field-preset-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      addCustomOwnerFieldRow(btn.dataset.preset);
+    });
+  });
+}
+
+function addCustomOwnerFieldRow(defaultName = "") {
+  const container = document.getElementById("customOwnerFieldsContainer");
+  if (!container) return;
+  customOwnerFieldCounter++;
+  const rowId = `customOwnerRow_${customOwnerFieldCounter}`;
+
+  const row = document.createElement("div");
+  row.className = "owner-detail-row custom-row";
+  row.id = rowId;
+
+  row.innerHTML = `
+    <div class="custom-field-name-wrap">
+      <input type="text" class="custom-field-name-input" placeholder="Field name e.g. Chassis Number" value="${escapeHTML(defaultName)}" autocomplete="off">
+    </div>
+    <div class="custom-val-wrap">
+      <input type="text" class="custom-field-val-input" placeholder="Enter new value" autocomplete="off">
+      <button type="button" class="custom-field-remove-btn" title="Remove this field" aria-label="Remove">&times;</button>
+    </div>
+  `;
+
+  row.querySelector(".custom-field-remove-btn").addEventListener("click", () => {
+    row.remove();
+  });
+
+  container.appendChild(row);
+
+  const nameInput = row.querySelector(".custom-field-name-input");
+  const valInput = row.querySelector(".custom-field-val-input");
+  if (defaultName) {
+    valInput.focus();
+  } else {
+    nameInput.focus();
+  }
 }
 
 function openOwnerDetails() {
@@ -5744,16 +5932,31 @@ function closeOwnerDetails() {
 
 function clearOwnerDetails() {
   document.querySelectorAll("#ownerDetailsFields input").forEach(input => { input.value = ""; });
-  document.getElementById("ownerDetail0").focus();
+  const firstInput = document.getElementById("ownerDetail0");
+  if (firstInput) firstInput.focus();
 }
 
 async function copyOwnerDetails() {
-  const details = NEW_OWNER_DETAIL_FIELDS.map((field, index) => {
-    const value = document.getElementById(`ownerDetail${index}`).value.trim();
+  const fixedDetails = NEW_OWNER_DETAIL_FIELDS.map((field, index) => {
+    const value = document.getElementById(`ownerDetail${index}`)?.value.trim();
     return value ? `${field}: ${value}` : "";
-  }).filter(Boolean).join(" | ");
+  }).filter(Boolean);
 
-  if (!details) {
+  const customRows = document.querySelectorAll(".owner-detail-row.custom-row");
+  const customDetails = [];
+  customRows.forEach(row => {
+    const name = row.querySelector(".custom-field-name-input")?.value.trim();
+    const val = row.querySelector(".custom-field-val-input")?.value.trim();
+    if (name && val) {
+      customDetails.push(`${name}: ${val}`);
+    } else if (val) {
+      customDetails.push(val);
+    }
+  });
+
+  const allDetails = [...fixedDetails, ...customDetails].join(" | ");
+
+  if (!allDetails) {
     showToast("Add at least one new value", "error");
     return;
   }
@@ -5761,7 +5964,7 @@ async function copyOwnerDetails() {
   let copied = false;
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(details);
+      await navigator.clipboard.writeText(allDetails);
       copied = true;
     } else {
       copied = fallbackCopy(details);
