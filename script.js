@@ -642,8 +642,8 @@ const mailTemplates = [
   {
     id: "tat_24hr",
     header: "24HR TAT MAIL",
-    description: "Apology and status update TAT mail with 24 hours / working days options",
-    keywords: ["24hr", "24 hr", "24 hours", "tat mail", "delay", "apology", "apologize", "status update", "working days", "2wd", "5wd", "2 working days", "5 working days"],
+    description: "Apology and status update TAT mail with 24 hours, 24-48 hours, 5 days exact date, and custom options",
+    keywords: ["24hr", "24 hr", "24 hours", "24-48hr", "24-48 hours", "5 days", "10 days", "tat mail", "delay", "apology", "apologize", "status update", "working days", "2wd", "5wd", "10wd", "2 working days", "5 working days"],
     type: "dynamic"
   },
 
@@ -1498,6 +1498,32 @@ function buildDocsOnly() {
 }
 
 /* ---------- BUILD DOCUMENTS & DETAILS HELPER ---------- */
+function formatDetailsList(raw) {
+  if (!raw) return "";
+  const lines = raw
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) return "";
+
+  let items = [];
+  if (lines.length === 1 && lines[0].includes(",") && !lines[0].toLowerCase().includes("e.g.")) {
+    items = lines[0].split(",").map(s => s.trim()).filter(Boolean);
+  } else {
+    items = lines;
+  }
+
+  return items.map(item => {
+    let clean = item
+      .replace(/^[\u2022\u25cf\-\*]\s*/, "")
+      .replace(/^\d+[\.\)]\s*/, "")
+      .trim();
+    clean = expandAbbreviations(clean);
+    return "\u2022 " + clean.toUpperCase();
+  }).join("\n");
+}
+
 function buildDocumentsAndDetailsText({
   includeDocs,
   includeDetails,
@@ -1509,6 +1535,7 @@ function buildDocumentsAndDetailsText({
   const hasDocs = !!includeDocs && formattedDocs && formattedDocs.length > 0;
   const cleanDetails = (detailsText || "").trim();
   const hasDetails = !!includeDetails && cleanDetails.length > 0;
+  const formattedDetails = hasDetails ? formatDetailsList(cleanDetails) : "";
   const parts = [];
 
   if (plainDocList && hasDocs) {
@@ -1518,7 +1545,7 @@ function buildDocumentsAndDetailsText({
     }
     parts.push(docBlock);
     if (hasDetails) {
-      parts.push("Please also share/provide the following details:\n\n" + expandAbbreviations(cleanDetails));
+      parts.push("Please also share/provide the following details:\n\n" + formattedDetails);
     }
     return parts;
   }
@@ -1527,7 +1554,7 @@ function buildDocumentsAndDetailsText({
     let docBlock = "We kindly request you to share the following documents and details to proceed further with your request:\n";
     for (const d of formattedDocs) docBlock += "\n\u2022 " + d;
     parts.push(docBlock);
-    parts.push("Please also share/provide the following details:\n\n" + expandAbbreviations(cleanDetails));
+    parts.push("Please also share/provide the following details:\n\n" + formattedDetails);
     if (proposalFormNote && formattedDocs.includes("PROPOSAL FORM")) {
       parts.push("We request you to kindly fill and share the attached Proposal Form to proceed further with your request.");
     }
@@ -1539,7 +1566,7 @@ function buildDocumentsAndDetailsText({
       parts.push("We request you to kindly fill and share the attached Proposal Form to proceed further with your request.");
     }
   } else if (hasDetails) {
-    parts.push("We kindly request you to share the following details to proceed further with your request:\n\n" + expandAbbreviations(cleanDetails));
+    parts.push("We kindly request you to share the following details to proceed further with your request:\n\n" + formattedDetails);
   } else if (includeDocs && includeDetails) {
     parts.push("We kindly request you to share the required documents and details to proceed further with your request.");
   } else if (includeDocs) {
@@ -2090,10 +2117,23 @@ function buildTat24Hr() {
   const s = appState.sectionSelections;
   let tatText = "24 hours";
 
-  if (mode === "2wd") tatText = "2 working days";
-  if (mode === "5wd") tatText = "5 working days";
-  if (mode === "10wd") tatText = "10 working days";
-  if (mode === "custom") {
+  if (mode === "24hr") {
+    tatText = "24 hours";
+  } else if (mode === "24-48hr") {
+    tatText = "24-48 hours";
+  } else if (mode === "5days") {
+    const target = addDays(new Date(), 5);
+    tatText = `5 days (time till ${formatDateDDMonthYYYY(target)})`;
+  } else if (mode === "10days") {
+    const target = addDays(new Date(), 10);
+    tatText = `10 days (time till ${formatDateDDMonthYYYY(target)})`;
+  } else if (mode === "2wd") {
+    tatText = "2 working days";
+  } else if (mode === "5wd") {
+    tatText = "5 working days";
+  } else if (mode === "10wd") {
+    tatText = "10 working days";
+  } else if (mode === "custom") {
     const days = Number.isFinite(customDays) && customDays > 0 ? customDays : 1;
     if (customType === "normal") {
       if (showExact) {
@@ -3688,6 +3728,45 @@ function renderDocumentsAndDetailsControls(docGrp, {
   if (s.details) {
     const detailsWrap = document.createElement("div");
     detailsWrap.style.marginTop = "8px";
+
+    // Quick-add preset chips
+    const presetWrap = document.createElement("div");
+    presetWrap.className = "details-preset-wrap";
+    presetWrap.style.display = "flex";
+    presetWrap.style.flexWrap = "wrap";
+    presetWrap.style.gap = "5px";
+    presetWrap.style.marginBottom = "8px";
+
+    const DETAIL_PRESETS = [
+      { label: "Nominee", lines: ["Nominee Name", "Nominee Date of Birth", "Nominee Relationship"] },
+      { label: "Owner", lines: ["Owner Name (Correct Spelling)", "Owner Date of Birth", "Owner Mobile Number"] },
+      { label: "Vehicle", lines: ["Make, Model & Variant", "Year of Manufacturing", "Engine Number", "Chassis Number"] },
+      { label: "Address", lines: ["Communication Address", "Pincode", "City", "State"] },
+      { label: "Bank (NEFT)", lines: ["Bank Name", "Account Holder Name", "Account Number", "IFSC Code"] },
+    ];
+
+    DETAIL_PRESETS.forEach(preset => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip-opt";
+      chip.style.fontSize = "11px";
+      chip.style.padding = "3px 10px";
+      chip.textContent = "+ " + preset.label;
+      chip.title = preset.lines.join(", ");
+      chip.addEventListener("click", () => {
+        const current = (appState.manualText || "").trim();
+        const currentLines = current ? current.split(/\r?\n/).map(l => l.trim().toLowerCase()) : [];
+        const newLines = preset.lines.filter(l => !currentLines.includes(l.toLowerCase()));
+        if (newLines.length === 0) return;
+        appState.manualText = (current ? current + "\n" : "") + newLines.join("\n");
+        renderControls();
+        updatePreview();
+      });
+      presetWrap.appendChild(chip);
+    });
+
+    detailsWrap.appendChild(presetWrap);
+
     const ta = document.createElement("textarea");
     ta.className = "text-area";
     ta.placeholder = "Enter details to request e.g. correct spelling of owner name, nominee DOB...";
@@ -4073,24 +4152,28 @@ function renderRenewalControls(host) {
 function renderTat24HrControls(host) {
   const grp = createGroup("TAT Options");
   const mode = appState.fieldValues.tatMode || "24hr";
+  const isCustomMode = ["2wd", "5wd", "10wd", "10days", "custom"].includes(mode);
   const chipSel = document.createElement("div");
   chipSel.className = "chip-select";
 
-  [
+  const topOptions = [
     { value: "24hr", label: "24 hours" },
-    { value: "2wd", label: "2 WD" },
-    { value: "5wd", label: "5 WD" },
-    { value: "10wd", label: "10 WD" },
+    { value: "24-48hr", label: "24-48 hours" },
+    { value: "5days", label: "5 Days (Exact Date)" },
     { value: "custom", label: "Custom WD" }
-  ].forEach(opt => {
+  ];
+
+  topOptions.forEach(opt => {
     const c = document.createElement("button");
     c.type = "button";
-    c.className = "chip-opt" + (mode === opt.value ? " active" : "");
+    const isActive = opt.value === "custom" ? isCustomMode : (mode === opt.value);
+    c.className = "chip-opt" + (isActive ? " active" : "");
     c.textContent = opt.label;
     c.addEventListener("click", () => {
-      appState.fieldValues.tatMode = opt.value;
-      if (opt.value === "custom" && !appState.fieldValues.tatCustomDays) {
-        appState.fieldValues.tatCustomDays = "3";
+      if (opt.value === "custom") {
+        appState.fieldValues.tatMode = appState.fieldValues.tatCustomSubMode || "10days";
+      } else {
+        appState.fieldValues.tatMode = opt.value;
       }
       renderControls();
       updatePreview();
@@ -4099,74 +4182,120 @@ function renderTat24HrControls(host) {
   });
   grp.appendChild(chipSel);
 
-  if (mode === "custom") {
-    const typeLbl = document.createElement("label");
-    typeLbl.className = "ctrl-label";
-    typeLbl.style.marginTop = "10px";
-    typeLbl.textContent = "Day Type";
+  if (isCustomMode) {
+    const customSection = document.createElement("div");
+    customSection.style.marginTop = "10px";
+    customSection.style.padding = "10px 12px";
+    customSection.style.background = "var(--bg-card, #f8fafc)";
+    customSection.style.borderRadius = "8px";
+    customSection.style.border = "1px solid var(--grey-line-2, #e2e8f0)";
 
-    const typeWrap = document.createElement("div");
-    typeWrap.className = "chip-select";
-    typeWrap.style.marginTop = "6px";
+    const customLbl = document.createElement("div");
+    customLbl.className = "ctrl-label";
+    customLbl.style.marginBottom = "6px";
+    customLbl.textContent = "Custom / Working Days Options";
+    customSection.appendChild(customLbl);
 
-    const customType = appState.fieldValues.tatCustomType || "working";
+    const subChips = document.createElement("div");
+    subChips.className = "chip-select";
 
-    const optWorking = document.createElement("button");
-    optWorking.type = "button";
-    optWorking.className = "chip-opt" + (customType === "working" ? " active" : "");
-    optWorking.textContent = "Working Days";
-    optWorking.addEventListener("click", () => {
-      appState.fieldValues.tatCustomType = "working";
-      renderControls();
-      updatePreview();
-    });
+    const customOptions = [
+      { value: "2wd", label: "2 WD" },
+      { value: "5wd", label: "5 WD" },
+      { value: "10wd", label: "10 WD" },
+      { value: "10days", label: "10 Days (Exact Date)" },
+      { value: "custom", label: "Custom Days" }
+    ];
 
-    const optNormal = document.createElement("button");
-    optNormal.type = "button";
-    optNormal.className = "chip-opt" + (customType === "normal" ? " active" : "");
-    optNormal.textContent = "Normal Days";
-    optNormal.addEventListener("click", () => {
-      appState.fieldValues.tatCustomType = "normal";
-      renderControls();
-      updatePreview();
-    });
-
-    typeWrap.appendChild(optWorking);
-    typeWrap.appendChild(optNormal);
-    grp.appendChild(typeLbl);
-    grp.appendChild(typeWrap);
-
-    const dayLbl = document.createElement("label");
-    dayLbl.className = "ctrl-label";
-    dayLbl.style.marginTop = "10px";
-    dayLbl.textContent = customType === "normal" ? "Custom Normal Days" : "Custom Working Days";
-    const dayInput = document.createElement("input");
-    dayInput.type = "number";
-    dayInput.min = "1";
-    dayInput.max = "30";
-    dayInput.className = "text-input";
-    dayInput.placeholder = "e.g. 3";
-    dayInput.value = appState.fieldValues.tatCustomDays || "3";
-    dayInput.addEventListener("input", () => {
-      appState.fieldValues.tatCustomDays = dayInput.value;
-      updatePreview();
-    });
-    grp.appendChild(dayLbl);
-    grp.appendChild(dayInput);
-
-    if (customType === "normal") {
-      const toggleRow = createToggleRow(
-        "Show as Exact Date",
-        "Convert normal days count to exact calendar date",
-        !!appState.fieldValues.tatCustomShowExactDate,
-        val => {
-          appState.fieldValues.tatCustomShowExactDate = val;
-          updatePreview();
+    customOptions.forEach(subOpt => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip-opt" + (mode === subOpt.value ? " active" : "");
+      b.textContent = subOpt.label;
+      b.addEventListener("click", () => {
+        appState.fieldValues.tatMode = subOpt.value;
+        appState.fieldValues.tatCustomSubMode = subOpt.value;
+        if (subOpt.value === "custom" && !appState.fieldValues.tatCustomDays) {
+          appState.fieldValues.tatCustomDays = "3";
         }
-      );
-      toggleRow.style.marginTop = "10px";
-      grp.appendChild(toggleRow);
+        renderControls();
+        updatePreview();
+      });
+      subChips.appendChild(b);
+    });
+    customSection.appendChild(subChips);
+
+    if (mode === "custom") {
+      const typeLbl = document.createElement("label");
+      typeLbl.className = "ctrl-label";
+      typeLbl.style.marginTop = "10px";
+      typeLbl.textContent = "Day Type";
+
+      const typeWrap = document.createElement("div");
+      typeWrap.className = "chip-select";
+      typeWrap.style.marginTop = "6px";
+
+      const customType = appState.fieldValues.tatCustomType || "working";
+
+      const optWorking = document.createElement("button");
+      optWorking.type = "button";
+      optWorking.className = "chip-opt" + (customType === "working" ? " active" : "");
+      optWorking.textContent = "Working Days";
+      optWorking.addEventListener("click", () => {
+        appState.fieldValues.tatCustomType = "working";
+        renderControls();
+        updatePreview();
+      });
+
+      const optNormal = document.createElement("button");
+      optNormal.type = "button";
+      optNormal.className = "chip-opt" + (customType === "normal" ? " active" : "");
+      optNormal.textContent = "Normal Days";
+      optNormal.addEventListener("click", () => {
+        appState.fieldValues.tatCustomType = "normal";
+        renderControls();
+        updatePreview();
+      });
+
+      typeWrap.appendChild(optWorking);
+      typeWrap.appendChild(optNormal);
+      customSection.appendChild(typeLbl);
+      customSection.appendChild(typeWrap);
+
+      const dayLbl = document.createElement("label");
+      dayLbl.className = "ctrl-label";
+      dayLbl.style.marginTop = "10px";
+      dayLbl.textContent = customType === "normal" ? "Custom Normal Days" : "Custom Working Days";
+      const dayInput = document.createElement("input");
+      dayInput.type = "number";
+      dayInput.min = "1";
+      dayInput.max = "30";
+      dayInput.className = "text-input";
+      dayInput.placeholder = "e.g. 3";
+      dayInput.value = appState.fieldValues.tatCustomDays || "3";
+      dayInput.addEventListener("input", () => {
+        appState.fieldValues.tatCustomDays = dayInput.value;
+        updatePreview();
+      });
+      customSection.appendChild(dayLbl);
+      customSection.appendChild(dayInput);
+
+      if (customType === "normal") {
+        const toggleRow = createToggleRow(
+          "Show as Exact Date",
+          "Convert normal days count to exact calendar date",
+          !!appState.fieldValues.tatCustomShowExactDate,
+          val => {
+            appState.fieldValues.tatCustomShowExactDate = val;
+            updatePreview();
+          }
+        );
+        toggleRow.style.marginTop = "10px";
+        customSection.appendChild(toggleRow);
+      }
     }
+
+    grp.appendChild(customSection);
   }
 
   host.appendChild(grp);
@@ -5828,7 +5957,8 @@ function closePrivateNotes() {
 const NEW_OWNER_DETAIL_FIELDS = [
   "Registration No", "Email ID", "Owner Name", "Communication Address",
   "Nominee Name", "Nominee Age", "Salutation", "Mobile No", "Marital Status",
-  "Date of Birth", "State", "City", "Pincode", "Nominee Relationship", "Vehicle Owned By"
+  "Date of Birth", "State", "City", "Pincode", "Nominee Relationship", "Vehicle Owned By",
+  "RTO"
 ];
 
 let customOwnerFieldCounter = 0;
@@ -5967,10 +6097,10 @@ async function copyOwnerDetails() {
       await navigator.clipboard.writeText(allDetails);
       copied = true;
     } else {
-      copied = fallbackCopy(details);
+      copied = fallbackCopy(allDetails);
     }
   } catch (error) {
-    copied = fallbackCopy(details);
+    copied = fallbackCopy(allDetails);
   }
   showToast(copied ? "Owner details copied" : "Unable to copy details", copied ? "success" : "error");
 }
@@ -6153,6 +6283,19 @@ function init() {
           removedFromControls = true;
         }
       });
+      // Also check if line matches a detail in manualText
+      if (!removedFromControls && appState.manualText) {
+        const rawLines = appState.manualText.split(/\r?\n/);
+        const matchIdx = rawLines.findIndex(l => {
+          const c = l.replace(/^[\u2022\u25cf\-\*]\s*/, "").replace(/^\d+[\.\)]\s*/, "").trim().toUpperCase();
+          return c === documentToDelete;
+        });
+        if (matchIdx !== -1) {
+          rawLines.splice(matchIdx, 1);
+          appState.manualText = rawLines.join("\n").trim();
+          removedFromControls = true;
+        }
+      }
 
       const lines = currentText.split("\n");
       const index = lines.indexOf(lineToDelete);
