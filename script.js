@@ -3452,13 +3452,6 @@ function renderVehicleSubtypeConfirmationControls(host) {
 function renderRFControls(host) {
   const s = appState.sectionSelections;
 
-  const grp1 = createGroup("Sections");
-  grp1.appendChild(createToggleRow("Greeting", "Greetings from PolicyBazaar.com!", s.greeting, val => { s.greeting = val; updatePreview(); }));
-  grp1.appendChild(createToggleRow("Reference", "This is with reference to your request.", s.reference, val => { s.reference = val; updatePreview(); }));
-  grp1.appendChild(createToggleRow("Request Forwarded", "Forwarded to insurance company", s.forwarded, val => { s.forwarded = val; updatePreview(); }));
-  grp1.appendChild(createToggleRow("Forward to Insurer", "Forwarded to insurer for the update (for general query / M-Parivahan)", !!s.concernedTeam, val => { s.concernedTeam = val; updatePreview(); }));
-  host.appendChild(grp1);
-
   /* Documents & Details */
   const docGrp = createGroup("📄 Documents & Details");
   renderDocumentsAndDetailsControls(docGrp, {
@@ -3471,6 +3464,13 @@ function renderRFControls(host) {
   });
   host.appendChild(docGrp);
   if (s.documents) wireDocInputEvents();
+
+  const grp1 = createGroup("Sections");
+  grp1.appendChild(createToggleRow("Greeting", "Greetings from PolicyBazaar.com!", s.greeting, val => { s.greeting = val; updatePreview(); }));
+  grp1.appendChild(createToggleRow("Reference", "This is with reference to your request.", s.reference, val => { s.reference = val; updatePreview(); }));
+  grp1.appendChild(createToggleRow("Request Forwarded", "Forwarded to insurance company", s.forwarded, val => { s.forwarded = val; updatePreview(); }));
+  grp1.appendChild(createToggleRow("Forward to Insurer", "Forwarded to insurer for the update (for general query / M-Parivahan)", !!s.concernedTeam, val => { s.concernedTeam = val; updatePreview(); }));
+  host.appendChild(grp1);
 
   /* Update Date + Working */
   const dateGrp = createGroup("Timing");
@@ -3713,6 +3713,12 @@ function renderDocumentsAndDetailsControls(docGrp, {
         <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. rc, aadhar, pyp"/>
         <button type="button" class="doc-add-btn" id="docAddBtn">Add</button>
       </div>
+      <div class="doc-recommendations" aria-label="Recommended documents">
+        <span>Recommended:</span>
+        <button type="button" class="doc-rec-btn" data-doc="aadhar">Aadhaar</button>
+        <button type="button" class="doc-rec-btn" data-doc="pan">PAN</button>
+        <button type="button" class="doc-rec-btn" data-doc="rc">RC</button>
+      </div>
       <div class="doc-chips" id="docChips"></div>
     `;
     docGrp.appendChild(docWrap);
@@ -3788,8 +3794,8 @@ function wireDocInputEvents() {
   const btn = document.getElementById("docAddBtn");
   const chips = document.getElementById("docChips");
   if (input && btn && chips) {
-    const doAdd = () => {
-      const val = input.value.trim();
+    const addDocument = val => {
+      val = (val || "").trim();
       if (!val) return;
       const norm = normalizeDocument(val);
       if (!appState.documents.includes(norm)) {
@@ -3802,9 +3808,13 @@ function wireDocInputEvents() {
       renderDocChips(chips);
       updatePreview();
     };
+    const doAdd = () => addDocument(input.value);
     btn.addEventListener("click", doAdd);
     input.addEventListener("keydown", e => {
       if (e.key === "Enter") { e.preventDefault(); doAdd(); }
+    });
+    document.querySelectorAll(".doc-rec-btn").forEach(recBtn => {
+      recBtn.addEventListener("click", () => addDocument(recBtn.dataset.doc));
     });
     renderDocChips(chips);
   }
