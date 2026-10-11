@@ -570,6 +570,62 @@ button {
   margin-bottom: 6px;
 }
 
+.collapsible-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.collapse-arrow {
+  color: var(--blue-accent);
+  font-size: 14px;
+  line-height: 1;
+  transition: transform 0.15s;
+}
+
+.collapsible-group.open .collapse-arrow {
+  transform: rotate(180deg);
+}
+
+.collapsible-body[hidden] {
+  display: none;
+}
+
+.mini-mode-select {
+  display: inline-flex;
+  gap: 4px;
+  margin: 0 0 6px;
+  padding: 3px;
+  border: 1px solid #d9e8f8;
+  border-radius: 999px;
+  background: #f7fbff;
+}
+
+.mini-mode-btn {
+  min-width: 36px;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.mini-mode-btn.active {
+  background: var(--blue-accent);
+  color: #fff;
+}
+
 .text-input,
 .text-area {
   width: 100%;
@@ -854,6 +910,195 @@ button {
   text-transform: uppercase;
   letter-spacing: 0.4px;
   background: #fafbfd;
+}
+
+.preview-concern-bar {
+  position: relative;
+  display: block;
+  padding: 9px 16px;
+  border-bottom: 1px solid #e8eef6;
+  background: #ffffff;
+}
+
+.preview-concern-bar[hidden] {
+  display: none;
+}
+
+.concern-bar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.concern-summary {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.concern-kicker {
+  flex-shrink: 0;
+  color: var(--text-mute);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.concern-title {
+  overflow: hidden;
+  color: var(--navy);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.concern-manager {
+  margin-top: 8px;
+}
+
+.concern-manage-btn {
+  min-height: 30px;
+  padding: 5px 12px;
+  border: 1px solid #cdd9e8;
+  border-radius: 999px;
+  background: #f8fbff;
+  color: var(--blue-accent);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.concern-manage-btn:hover,
+.concern-manage-btn[aria-expanded="true"] {
+  border-color: var(--blue-accent);
+  background: #eef5fc;
+}
+
+.concern-menu {
+  width: 100%;
+  max-height: min(560px, calc(100vh - 240px));
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid #d6e2f0;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(11, 37, 69, 0.08);
+}
+
+.concern-menu[hidden] {
+  display: none;
+}
+
+.concern-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.concern-menu-item:hover {
+  background: #f2f7fd;
+}
+
+.concern-menu-item.active {
+  color: var(--blue-accent);
+  background: #eef5fc;
+}
+
+.concern-menu-item[disabled] {
+  cursor: default;
+  opacity: 0.82;
+}
+
+.concern-settings-panel {
+  margin: 6px 0 9px;
+  padding: 9px 10px;
+  border: 1px solid #e2ebf5;
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+.concern-settings-title {
+  margin-bottom: 4px;
+  color: var(--text-soft);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.35px;
+  text-transform: uppercase;
+}
+
+.concern-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-top: 1px dashed #e3ebf5;
+}
+
+.concern-settings-title+.concern-setting-row {
+  border-top: 0;
+}
+
+.concern-setting-label {
+  display: block;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.concern-setting-desc {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-mute);
+  font-size: 10.8px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.concern-switch {
+  transform: scale(0.9);
+  transform-origin: right center;
+}
+
+.concern-inline-field {
+  padding: 0 0 8px;
+}
+
+.concern-settings-panel .doc-input-row {
+  margin-top: 3px;
+}
+
+.concern-settings-panel .doc-add-btn {
+  min-width: 50px;
+}
+
+.concern-details-input {
+  min-height: 58px;
+  margin: 2px 0 8px;
+  font-size: 12.5px;
+}
+
+.concern-doc-chips {
+  margin-top: 6px;
+}
+
+.concern-doc-chip {
+  max-width: 100%;
 }
 
 .preview-hint {
