@@ -23,6 +23,9 @@ const appState = {
   showTatOptions: false,        // RF: reveal TAT day controls
   extraNoteActive: false,       // toggle for appending extra note at bottom of any mail
   extraNoteText: "",            // text content for extra note
+  extraConcerns: {},
+  extraConcernOptions: {},
+  concernManagerOpen: false,
   miniPos: null,
   isFloating: false,
   isPiPActive: false,
@@ -59,6 +62,37 @@ const DOC_MAP = [
   { keys: ["alt", "alt policy", "alternate", "alternate policy", "alternative policy"], out: "ALTERNATE POLICY FOR SAME VEHICLE" },
   { keys: ["mmv", "mv", "make model variant", "model variant", "make model"], out: "MAKE, MODEL & VARIANT DETAILS" }
 ];
+
+const EXTRA_CONCERN_OPTIONS = [
+  { key: "correction", label: "Correction Process" },
+  { key: "cancellation", label: "Cancellation" },
+  { key: "unnamedPassenger", label: "Unnamed Passenger" }
+];
+
+const EXTRA_CONCERN_DEFAULTS = {
+  cancellation: {
+    documents: false,
+    documentList: [],
+    details: false,
+    detailsText: "",
+    consent: false,
+    alternate: true,
+    includeBundle: false,
+    alternateMayBe: false,
+    neft: false,
+    exactDate: false,
+    irdaiNote: false
+  },
+  correction: {
+    chargesInspection: true,
+    originalCopy: false,
+    ncbNote: false
+  },
+  unnamedPassenger: {
+    option50: true,
+    option100: true
+  }
+};
 
 function normalizeDocument(raw) {
   if (!raw) return "";
@@ -370,6 +404,22 @@ const mailTemplates = [
     fields: [
       { key: "amount", label: "Refund Amount", placeholder: "e.g. 5000 or Rs 5000", type: "text" }
     ]
+  },
+
+  /* ---------- PAYMENT FAILED REFUND ---------- */
+  {
+    id: "payment_failed_refund",
+    header: "PAYMENT FAILED REFUND",
+    description: "Inform customer that failed payment will be refunded within 7 working days",
+    keywords: ["payment failed", "failed payment", "payment fail", "payment failure", "refund in 7 days", "same source refund", "source account refund", "refund"],
+    type: "fixed",
+    body: [
+      "Greetings from PolicyBazaar.com!",
+      "",
+      "This is with reference to your request.",
+      "",
+      "We would like to inform you that the payment has failed. The amount, if debited, will be refunded to the same source account/payment method within 7 working days."
+    ].join("\n")
   },
 
   /* ---------- 2W VIDEO INSPECTION ---------- */
@@ -778,8 +828,6 @@ const mailTemplates = [
       "",
       "We would like to inform you that if any amount has been debited from your account, it will be refunded back to the same source account within 7 working days.",
       "",
-      "We are proceeding with the closure of this request, as the necessary details have been shared.",
-      "",
       "We appreciate your understanding in this regard."
     ].join("\n")
   },
@@ -855,7 +903,10 @@ const mailTemplates = [
     type: "hybrid",
     defaultSelections: {
       clarification: false,
+      docsDetailsSection: true,
+      newOwnerDetails: true,
       paCoverSection: true,
+      ownershipDeclaration: true,
       shortfallPayment: false,
       tat: true,
       charges: true,
@@ -1663,7 +1714,14 @@ function buildRF() {
   }
 
   if (s.charges && !appState.workingMode && !s.concernedTeam) {
-    parts.push("We would like to update you that there may be charges and inspection applicable, which shall be communicated to you in future communication.");
+    const chargesMode = s.chargesMode || "both";
+    if (chargesMode === "charges") {
+      parts.push("We would like to update you that there may be charges applicable, which shall be communicated to you in future communication.");
+    } else if (chargesMode === "inspection") {
+      parts.push("We would like to update you that there may be an inspection applicable, which shall be communicated to you in future communication.");
+    } else {
+      parts.push("We would like to update you that there may be charges and inspection applicable, which shall be communicated to you in future communication.");
+    }
   }
 
   if (s.originalCopy && !appState.workingMode && !s.concernedTeam) {
@@ -1675,6 +1733,93 @@ function buildRF() {
   }
 
   return parts.join("\n\n");
+}
+
+function buildExtraConcernText() {
+  const concerns = appState.extraConcerns || {};
+  const parts = [];
+
+  if (concerns.cancellation) {
+    const opts = getExtraConcernOptions("cancellation");
+    const items = [];
+    if (opts.documents && Array.isArray(opts.documentList)) {
+      opts.documentList.forEach(doc => {
+        if (doc) items.push(doc);
+      });
+    }
+    if (opts.details && (opts.detailsText || "").trim()) {
+      items.push("Following details: " + expandAbbreviations(opts.detailsText.trim()));
+    }
+    if (opts.consent) {
+      items.push("Written consent for cancellation with the policy number");
+    }
+    if (opts.alternate && !opts.alternateMayBe) {
+      items.push((opts.includeBundle ? "Alternate / Bundle policy" : "Alternate policy") + " of the same vehicle");
+    }
+    if (opts.neft) {
+      items.push("A cancelled cheque or bank passbook of the insured person as per policy");
+    }
+    const formattedItems = items.length
+      ? "\n\n" + items.map((item, idx) => `${idx + 1}. ${item}`).join("\n")
+      : "";
+    const exactDate = opts.exactDate
+      ? ` (till ${formatDateDDMonthYYYY(addDays(new Date(), 10))})`
+      : "";
+
+    parts.push([
+      "Additionally, as you have also asked about the cancellation process, please find the requirements below:" + formattedItems,
+      "",
+      `The cancellation process typically takes 10 days${exactDate}.`,
+      opts.irdaiNote ? "Note: Alternate should be comprehensive; if it is a TP policy, it must start before the policy proposed for cancellation." : "",
+      opts.alternate && opts.alternateMayBe ? `Note: ${opts.includeBundle ? "Alternate / Bundle policy" : "Alternate policy"} may be required as per insurer confirmation.` : "",
+      "Additionally, please note that there will be an INR 118 administrative fee, along with a deduction based on the policy usage, which will be determined by the insurer after the cancellation request is raised."
+    ].filter(Boolean).join("\n\n"));
+  }
+
+  if (concerns.correction) {
+    const opts = getExtraConcernOptions("correction");
+    const correctionLines = [
+      "Additionally, regarding your query for the correction process, we would like to inform you that the required changes can be processed subject to insurer confirmation and the applicable policy terms."
+    ];
+    if (opts.chargesInspection) {
+      correctionLines.push("If any supporting document, additional premium, charges, or inspection is required for the correction, we will inform you in our future communication.");
+    }
+    if (opts.originalCopy) {
+      correctionLines.push("We request you to kindly keep the Endorsed copy along with your original policy copy for future reference.");
+    }
+    if (opts.ncbNote) {
+      correctionLines.push("Note: NCB Confirmation Letter may be required to proceed further with your request.");
+    }
+    parts.push([
+      correctionLines.join("\n\n")
+    ].join("\n"));
+  }
+
+  if (concerns.unnamedPassenger) {
+    const opts = getExtraConcernOptions("unnamedPassenger");
+    const options = [];
+    if (opts.option50 !== false) {
+      options.push("1. PA cover for unnamed passengers of Rs. 50/- (excluding GST) for a sum insured value of Rs. 1,00,000/-");
+    }
+    if (opts.option100 !== false) {
+      options.push(`${options.length + 1}. PA cover for unnamed passengers of Rs. 100/- (excluding GST) for a sum insured value of Rs. 2,00,000/-`);
+    }
+    parts.push([
+      "Additionally, regarding your query for unnamed passenger cover, we request you to kindly confirm the PA cover option you wish to opt for:",
+      "",
+      options.join("\n")
+    ].join("\n"));
+  }
+
+  return parts;
+}
+
+function getExtraConcernOptions(key) {
+  if (!appState.extraConcernOptions) appState.extraConcernOptions = {};
+  if (!appState.extraConcernOptions[key]) {
+    appState.extraConcernOptions[key] = { ...(EXTRA_CONCERN_DEFAULTS[key] || {}) };
+  }
+  return appState.extraConcernOptions[key];
 }
 
 /* ---------- BAJAJ OT ---------- */
@@ -2455,7 +2600,17 @@ function buildSbiOt() {
   ];
 
   const formattedDocs = getFormattedDocuments();
-  if (s.clarification) {
+  const ownerDetailsBlock = "New Owner Details:\n" +
+    "• Address\n" +
+    "• Email ID\n" +
+    "• Mobile Number\n" +
+    "• Date of Birth (DOB)\n" +
+    "• Marital Status\n" +
+    "• Nominee Name\n" +
+    "• Nominee DOB\n" +
+    "• Nominee Relationship with the Insured";
+
+  if (s.docsDetailsSection !== false && s.clarification) {
     let otDocs = formattedDocs.length > 0
       ? "Documents Required:\n" + formattedDocs.map(d => `• ${d}`).join("\n") + "\n\n"
       : "";
@@ -2468,28 +2623,27 @@ function buildSbiOt() {
       "",
       "OPTION 1: For Ownership Transfer",
       "",
-      otDocs + "New Owner Details:\n" +
-      "• Address\n• Email ID\n• Mobile Number\n• Date of Birth (DOB)\n• Marital Status\n• Nominee Name\n• Nominee DOB\n• Nominee Relationship with the Insured",
+      otDocs + (s.newOwnerDetails !== false ? ownerDetailsBlock : "").trim(),
       "",
       "OPTION 2: For Name Correction",
       "",
       "Documents Required:\n" + nameDocs + "\n\nDetails Required:\n• Exact spelling of the Insured's Name to be corrected"
     );
-  } else if (formattedDocs.length > 0) {
-    let docBlock = "To proceed further with your request, we kindly request you to share the following documents and details:\n";
+  } else if (s.docsDetailsSection !== false && (formattedDocs.length > 0 || s.newOwnerDetails)) {
+    const hasDocs = formattedDocs.length > 0;
+    const hasDetails = s.newOwnerDetails !== false;
+    let docBlock = hasDocs && hasDetails
+      ? "To proceed further with your request, we kindly request you to share the following documents and details:\n"
+      : hasDocs
+        ? "To proceed further with your request, we kindly request you to share the following documents:\n"
+        : "To proceed further with your request, we kindly request you to share the following details:\n";
     for (const d of formattedDocs) {
       docBlock += `\n\u2022 ${d}`;
     }
 
-    docBlock += "\n\nNew Owner Details:\n" +
-      "\u2022 Address\n" +
-      "\u2022 Email ID\n" +
-      "\u2022 Mobile Number\n" +
-      "\u2022 Date of Birth (DOB)\n" +
-      "\u2022 Marital Status\n" +
-      "\u2022 Nominee Name\n" +
-      "\u2022 Nominee DOB\n" +
-      "\u2022 Nominee Relationship with the Insured";
+    if (hasDetails) {
+      docBlock += (hasDocs ? "\n\n" : "") + ownerDetailsBlock;
+    }
 
     parts.push("", docBlock);
   }
@@ -2503,6 +2657,15 @@ function buildSbiOt() {
       "  1. Owner does not have a valid driving license\n" +
       "  2. Already have a personal accidental cover\n" +
       "  3. Owner is not driving the vehicle"
+    );
+  }
+
+  if (s.ownershipDeclaration !== false) {
+    parts.push(
+      "",
+      "Please share below declaration on mail:",
+      "",
+      "\"I certify that I have applied for the transfer of ownership in policy no. __________________ and there is no known or reported loss till date. I certify that the above facts are true to the best of my knowledge and if found false, I am liable for it and Insurer has the right to cancel the policy without any refund.\""
     );
   }
 
@@ -3462,10 +3625,36 @@ function renderRFControls(host) {
       if (val) s.updateDate = false;
     }
   });
+  if (!appState.workingMode) {
+    const modeWrap = document.createElement("div");
+    modeWrap.className = "mini-mode-select";
+    modeWrap.style.marginTop = "8px";
+    modeWrap.setAttribute("aria-label", "Charges and inspection line type");
+    [
+      ["both", "Both"],
+      ["charges", "SF"],
+      ["inspection", "VI"]
+    ].forEach(([value, label]) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "mini-mode-btn" + ((s.chargesMode || "both") === value ? " active" : "");
+      btn.textContent = label;
+      btn.title = value === "both" ? "Charges and inspection" : value === "charges" ? "Shortfall / charges line only" : "Vehicle inspection line only";
+      btn.addEventListener("click", () => {
+        s.chargesMode = value;
+        if (!s.charges) s.charges = true;
+        renderControls();
+        updatePreview();
+      });
+      modeWrap.appendChild(btn);
+    });
+    docGrp.appendChild(modeWrap);
+    docGrp.appendChild(createToggleRow("Charges / Inspection", "Possible charges & inspection note", s.charges, val => { s.charges = val; updatePreview(); }));
+  }
   host.appendChild(docGrp);
   if (s.documents) wireDocInputEvents();
 
-  const grp1 = createGroup("Sections");
+  const grp1 = createCollapsibleGroup("Sections", false);
   grp1.appendChild(createToggleRow("Greeting", "Greetings from PolicyBazaar.com!", s.greeting, val => { s.greeting = val; updatePreview(); }));
   grp1.appendChild(createToggleRow("Reference", "This is with reference to your request.", s.reference, val => { s.reference = val; updatePreview(); }));
   grp1.appendChild(createToggleRow("Request Forwarded", "Forwarded to insurance company", s.forwarded, val => { s.forwarded = val; updatePreview(); }));
@@ -3638,7 +3827,6 @@ function renderRFControls(host) {
 
     /* Extras */
     const extrasGrp = createGroup("Extras");
-    extrasGrp.appendChild(createToggleRow("Charges / Inspection", "Possible charges & inspection note", s.charges, val => { s.charges = val; updatePreview(); }));
     extrasGrp.appendChild(createToggleRow("Original + Endorsed Copy", "Keep both copies note", s.originalCopy, val => { s.originalCopy = val; updatePreview(); }));
     extrasGrp.appendChild(createToggleRow("NCB Note", "Include NCB Confirmation Letter requirement note", s.ncbNote, val => { s.ncbNote = val; updatePreview(); }));
     host.appendChild(extrasGrp);
@@ -3835,6 +4023,9 @@ function renderDocChips(host) {
       appState.documents.splice(idx, 1);
       if (appState.activeTemplateId === "m_parivahan_mail" && appState.documents.length === 0) {
         appState.sectionSelections.showExactDate = true;
+      }
+      if (appState.activeTemplateId === "sbi_ot" && appState.documents.length === 0) {
+        appState.sectionSelections.newOwnerDetails = false;
       }
       renderControls();
       updatePreview();
@@ -4835,6 +5026,9 @@ function renderChangeNotPossibleControls(host) {
 /* ---------- SBI OT Controls ---------- */
 function renderSbiOtControls(host) {
   const s = appState.sectionSelections;
+  if (s.docsDetailsSection === undefined) s.docsDetailsSection = true;
+  if (s.newOwnerDetails === undefined) s.newOwnerDetails = true;
+  if (s.ownershipDeclaration === undefined) s.ownershipDeclaration = true;
 
   const modeGrp = createGroup("Options");
   modeGrp.appendChild(createToggleRow(
@@ -4851,41 +5045,58 @@ function renderSbiOtControls(host) {
   host.appendChild(modeGrp);
 
   // Documents
-  const docGrp = createGroup("Documents & Details");
-  const docWrap = document.createElement("div");
-  docWrap.innerHTML = `
-    <div class="doc-input-row">
-      <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. rc, aadhar, pan"/>
-      <button type="button" class="doc-add-btn" id="docAddBtn">Add</button>
-    </div>
-    <div class="doc-chips" id="docChips"></div>
-  `;
-  docGrp.appendChild(docWrap);
+  const docGrp = createGroup("Documents & Owner Details");
+  docGrp.appendChild(createToggleRow(
+    "Include Documents / Details",
+    "Show requested documents and owner detail requirements",
+    s.docsDetailsSection !== false,
+    val => { s.docsDetailsSection = val; renderControls(); updatePreview(); }
+  ));
+  if (s.docsDetailsSection !== false) {
+    docGrp.appendChild(createToggleRow(
+      "New Owner Details",
+      "Include address, email, mobile, DOB, marital status and nominee details",
+      s.newOwnerDetails !== false,
+      val => { s.newOwnerDetails = val; updatePreview(); }
+    ));
+
+    const docWrap = document.createElement("div");
+    docWrap.innerHTML = `
+      <div class="doc-input-row">
+        <input type="text" class="text-input" id="docInput" placeholder="Type document e.g. rc, aadhar, pan"/>
+        <button type="button" class="doc-add-btn" id="docAddBtn">Add</button>
+      </div>
+      <div class="doc-chips" id="docChips"></div>
+    `;
+    docGrp.appendChild(docWrap);
+  }
   host.appendChild(docGrp);
 
-  const input = document.getElementById("docInput");
-  const btn = document.getElementById("docAddBtn");
-  const chips = document.getElementById("docChips");
-  if (input && btn && chips) {
-    const doAdd = () => {
-      const val = input.value.trim();
-      if (!val) return;
-      const norm = normalizeDocument(val);
-      if (!appState.documents.includes(norm)) {
-        appState.documents.push(norm);
-      }
-      input.value = "";
+  if (s.docsDetailsSection !== false) {
+    const input = document.getElementById("docInput");
+    const btn = document.getElementById("docAddBtn");
+    const chips = document.getElementById("docChips");
+    if (input && btn && chips) {
+      const doAdd = () => {
+        const val = input.value.trim();
+        if (!val) return;
+        const norm = normalizeDocument(val);
+        if (!appState.documents.includes(norm)) {
+          appState.documents.push(norm);
+        }
+        input.value = "";
+        renderDocChips(chips);
+        updatePreview();
+      };
+      btn.addEventListener("click", doAdd);
+      input.addEventListener("keydown", e => {
+        if (e.key === "Enter") { e.preventDefault(); doAdd(); }
+      });
       renderDocChips(chips);
-      updatePreview();
-    };
-    btn.addEventListener("click", doAdd);
-    input.addEventListener("keydown", e => {
-      if (e.key === "Enter") { e.preventDefault(); doAdd(); }
-    });
-    renderDocChips(chips);
+    }
   }
 
-  if (s.clarification) {
+  if (s.docsDetailsSection !== false && s.clarification) {
     const nameDocGrp = createGroup("Name Correction Documents");
     nameDocGrp.innerHTML = `
       <div class="doc-input-row">
@@ -4923,6 +5134,12 @@ function renderSbiOtControls(host) {
     "Include PA cover declaration block & reasons",
     !!s.paCoverSection,
     val => { s.paCoverSection = val; updatePreview(); }
+  ));
+  optGrp.appendChild(createToggleRow(
+    "Ownership Declaration",
+    "Include transfer ownership no-loss declaration",
+    s.ownershipDeclaration !== false,
+    val => { s.ownershipDeclaration = val; updatePreview(); }
   ));
   optGrp.appendChild(createToggleRow(
     "Shortfall Payment Section",
@@ -5323,6 +5540,33 @@ function createGroup(title) {
   return wrap;
 }
 
+function createCollapsibleGroup(title, open = false) {
+  const wrap = document.createElement("div");
+  wrap.className = "control-group collapsible-group" + (open ? " open" : "");
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "ctrl-label collapsible-label";
+  btn.setAttribute("aria-expanded", open ? "true" : "false");
+  btn.innerHTML = `<span>${escapeHTML(title)}</span><span class="collapse-arrow" aria-hidden="true">⌄</span>`;
+
+  const body = document.createElement("div");
+  body.className = "collapsible-body";
+  body.hidden = !open;
+
+  btn.addEventListener("click", () => {
+    const isOpen = !body.hidden;
+    body.hidden = isOpen;
+    wrap.classList.toggle("open", !isOpen);
+    btn.setAttribute("aria-expanded", isOpen ? "false" : "true");
+  });
+
+  wrap.appendChild(btn);
+  wrap.appendChild(body);
+  wrap.appendChild = child => body.appendChild(child);
+  return wrap;
+}
+
 function createToggleRow(label, desc, checked, onChange) {
   const row = document.createElement("div");
   row.className = "toggle-row";
@@ -5417,6 +5661,7 @@ function updatePreview(isControlChange = true, scrollPreviewToBottom = false) {
   }
   const card = document.getElementById("previewCard");
   const text = buildPreview();
+  renderPreviewConcernBar();
   card.innerHTML = renderPreviewHTML(text);
   if (scrollPreviewToBottom) {
     requestAnimationFrame(() => {
@@ -5425,6 +5670,221 @@ function updatePreview(isControlChange = true, scrollPreviewToBottom = false) {
   }
 
   setCopyButtonsDisabled(!text.trim());
+}
+
+function renderPreviewConcernBar() {
+  const bar = document.getElementById("previewConcernBar");
+  if (!bar) return;
+  bar.hidden = true;
+  bar.innerHTML = "";
+  return;
+
+  const tpl = getActiveTemplate();
+  if (!tpl) {
+    bar.hidden = true;
+    bar.innerHTML = "";
+    return;
+  }
+
+  if (!appState.extraConcerns) appState.extraConcerns = {};
+  const mainLabel = getMainConcernLabel(tpl);
+  const availableOptions = getAvailableExtraConcernOptions(tpl.id);
+  const activeExtras = availableOptions
+    .filter(opt => appState.extraConcerns[opt.key])
+    .map(opt => opt.label);
+
+  bar.hidden = false;
+  const summary = activeExtras.length
+    ? `${mainLabel} + ${activeExtras.join(" + ")}`
+    : `${mainLabel} only`;
+
+  const optionButtons = availableOptions.map(opt => {
+    const active = !!appState.extraConcerns[opt.key];
+    const icon = active ? "✓" : "+";
+    const addOns = active ? renderExtraConcernSettings(opt.key) : "";
+    return `<button type="button" class="concern-menu-item${active ? " active" : ""}" data-concern="${escapeHTML(opt.key)}">
+      <span>${escapeHTML(icon)}</span>
+      <span>${escapeHTML(opt.label)}</span>
+    </button>${addOns}`;
+  }).join("");
+
+  bar.innerHTML = `
+    <div class="concern-bar-head">
+      <div class="concern-summary">
+        <span class="concern-kicker">Included</span>
+        <span class="concern-title">${escapeHTML(summary)}</span>
+      </div>
+      <button type="button" class="concern-manage-btn" id="concernManageBtn" aria-expanded="${appState.concernManagerOpen ? "true" : "false"}">
+        ${appState.concernManagerOpen ? "Hide Settings" : "Manage"}
+      </button>
+    </div>
+    <div class="concern-manager">
+      <div class="concern-menu" id="concernMenu"${appState.concernManagerOpen ? "" : " hidden"}>
+        ${optionButtons}
+      </div>
+    </div>
+  `;
+
+  const manageBtn = bar.querySelector("#concernManageBtn");
+  const menu = bar.querySelector("#concernMenu");
+  manageBtn.addEventListener("click", () => {
+    appState.concernManagerOpen = !appState.concernManagerOpen;
+    renderPreviewConcernBar();
+  });
+
+  menu.querySelectorAll(".concern-menu-item").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.concern;
+      appState.extraConcerns[key] = !appState.extraConcerns[key];
+      renderPreviewConcernBar();
+      updatePreview();
+    });
+  });
+
+  wireExtraConcernSettings(menu);
+}
+
+function getMainConcernLabel(tpl) {
+  if (!tpl) return "Mail";
+  if (tpl.id === "rf") return "Correction";
+  return tpl.header
+    .toLowerCase()
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function getAvailableExtraConcernOptions(activeTemplateId) {
+  return EXTRA_CONCERN_OPTIONS.filter(opt => {
+    if (activeTemplateId === "rf" && opt.key === "correction") return false;
+    if (activeTemplateId === "cancellation" && opt.key === "cancellation") return false;
+    if (activeTemplateId === "unnamed_passenger_cover" && opt.key === "unnamedPassenger") return false;
+    return true;
+  });
+}
+
+function renderConcernToggle(key, option, label, desc) {
+  const opts = getExtraConcernOptions(key);
+  const checked = !!opts[option];
+  return `<label class="concern-setting-row">
+    <span>
+      <span class="concern-setting-label">${escapeHTML(label)}</span>
+      ${desc ? `<span class="concern-setting-desc">${escapeHTML(desc)}</span>` : ""}
+    </span>
+    <span class="switch concern-switch">
+      <input type="checkbox" class="concern-setting-toggle" data-concern="${escapeHTML(key)}" data-option="${escapeHTML(option)}"${checked ? " checked" : ""}>
+      <span class="slider"></span>
+    </span>
+  </label>`;
+}
+
+function renderExtraConcernSettings(key) {
+  if (key === "cancellation") {
+    const opts = getExtraConcernOptions("cancellation");
+    const docs = Array.isArray(opts.documentList) ? opts.documentList : [];
+    const chips = docs.map((doc, idx) => `<span class="doc-chip concern-doc-chip">
+      <span>${escapeHTML(doc)}</span>
+      <button type="button" class="concern-doc-remove" data-concern="cancellation" data-index="${idx}" aria-label="Remove ${escapeHTML(doc)}">x</button>
+    </span>`).join("");
+    return `<div class="concern-settings-panel">
+      <div class="concern-settings-title">Cancellation Settings</div>
+      ${renderConcernToggle("cancellation", "documents", "Include Documents", "Ask for additional documents")}
+      ${opts.documents ? `<div class="concern-inline-field">
+        <div class="doc-input-row">
+          <input type="text" class="text-input concern-doc-input" data-concern="cancellation" placeholder="Type document e.g. rc, aadhar, pan">
+          <button type="button" class="doc-add-btn concern-doc-add" data-concern="cancellation">Add</button>
+        </div>
+        <div class="doc-chips concern-doc-chips">${chips}</div>
+      </div>` : ""}
+      ${renderConcernToggle("cancellation", "details", "Include Details", "Ask for custom details")}
+      ${opts.details ? `<textarea class="text-area concern-details-input" data-concern="cancellation" placeholder="Enter details to request">${escapeHTML(opts.detailsText || "")}</textarea>` : ""}
+      ${renderConcernToggle("cancellation", "consent", "Written Consent", "Consent with policy number")}
+      ${renderConcernToggle("cancellation", "alternate", "Alternate Policy", "Alternate policy of same vehicle")}
+      ${opts.alternate ? renderConcernToggle("cancellation", "includeBundle", "Bundle Word", "Use Alternate / Bundle policy") : ""}
+      ${opts.alternate ? renderConcernToggle("cancellation", "alternateMayBe", "May Be Note", "Show insurer confirmation note") : ""}
+      ${renderConcernToggle("cancellation", "neft", "Bank Proof", "Cancelled cheque or passbook")}
+      ${renderConcernToggle("cancellation", "exactDate", "Exact Date", "Show 10-day expected date")}
+      ${renderConcernToggle("cancellation", "irdaiNote", "Insurer Norms", "Show TP/comprehensive note")}
+    </div>`;
+  }
+
+  if (key === "correction") {
+    return `<div class="concern-settings-panel">
+      <div class="concern-settings-title">Correction Settings</div>
+      ${renderConcernToggle("correction", "chargesInspection", "Charges / Inspection", "Mention possible premium, charges or inspection")}
+      ${renderConcernToggle("correction", "originalCopy", "Original + Endorsed Copy", "Keep both copies note")}
+      ${renderConcernToggle("correction", "ncbNote", "NCB Note", "Mention NCB confirmation requirement")}
+    </div>`;
+  }
+
+  if (key === "unnamedPassenger") {
+    return `<div class="concern-settings-panel">
+      <div class="concern-settings-title">Unnamed Passenger Settings</div>
+      ${renderConcernToggle("unnamedPassenger", "option50", "Rs. 50 Option", "Sum insured Rs. 1,00,000")}
+      ${renderConcernToggle("unnamedPassenger", "option100", "Rs. 100 Option", "Sum insured Rs. 2,00,000")}
+    </div>`;
+  }
+
+  return "";
+}
+
+function wireExtraConcernSettings(menu) {
+  menu.querySelectorAll(".concern-setting-toggle").forEach(input => {
+    input.addEventListener("change", e => {
+      e.stopPropagation();
+      const key = input.dataset.concern;
+      const option = input.dataset.option;
+      const opts = getExtraConcernOptions(key);
+      opts[option] = input.checked;
+      renderPreviewConcernBar();
+      updatePreview();
+    });
+  });
+
+  menu.querySelectorAll(".concern-details-input").forEach(input => {
+    input.addEventListener("input", () => {
+      const opts = getExtraConcernOptions(input.dataset.concern);
+      opts.detailsText = input.value;
+      updatePreview();
+    });
+  });
+
+  const addDocument = concernKey => {
+    const input = menu.querySelector(`.concern-doc-input[data-concern="${concernKey}"]`);
+    if (!input) return;
+    const value = input.value.trim();
+    if (!value) return;
+    const opts = getExtraConcernOptions(concernKey);
+    if (!Array.isArray(opts.documentList)) opts.documentList = [];
+    const norm = normalizeDocument(value);
+    if (!opts.documentList.includes(norm)) opts.documentList.push(norm);
+    renderPreviewConcernBar();
+    updatePreview();
+  };
+
+  menu.querySelectorAll(".concern-doc-add").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      addDocument(btn.dataset.concern);
+    });
+  });
+  menu.querySelectorAll(".concern-doc-input").forEach(input => {
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        addDocument(input.dataset.concern);
+      }
+    });
+  });
+  menu.querySelectorAll(".concern-doc-remove").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      const opts = getExtraConcernOptions(btn.dataset.concern);
+      if (Array.isArray(opts.documentList)) {
+        opts.documentList.splice(Number(btn.dataset.index), 1);
+      }
+      renderPreviewConcernBar();
+      updatePreview();
+    });
+  });
 }
 
 /* =========================================================
@@ -5449,13 +5909,16 @@ function selectTemplate(id) {
   appState.tatDays = 10;
   appState.extraNoteActive = false;
   appState.extraNoteText = "";
+  appState.extraConcerns = {};
+  appState.extraConcernOptions = {};
+  appState.concernManagerOpen = false;
 
   // Init section selections
   if (tpl.id === "rf") {
     appState.sectionSelections = {
       greeting: true, reference: true, forwarded: false,
       documents: false, details: false, updateDate: true, tat: true,
-      charges: true, originalCopy: true, ncbNote: false
+      charges: true, chargesMode: "both", originalCopy: true, ncbNote: false
     };
   } else if (tpl.id === "tat_already_shared") {
     appState.sectionSelections = { ...tpl.defaultSelections };
