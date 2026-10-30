@@ -1216,11 +1216,13 @@ function buildBlankMail() {
   const parts = [
     "Greetings from PolicyBazaar.com!",
     "",
-    "This is with reference to your request."
+    "This is with reference to your request.",
   ];
 
   if (manual) {
-    parts.push("", expandAbbreviations(manual));
+    parts.push("", `We would like to inform you that ${expandAbbreviations(manual)}`);
+  } else {
+    parts.push("", "We would like to inform you that");
   }
 
   return parts.join("\n");
@@ -2087,29 +2089,17 @@ function buildTwoWVideoInspection() {
 }
 /* ---------- 4W VIDEO INSPECTION ---------- */
 function buildVideoInspection() {
-  const s = appState.sectionSelections;
-  const reason = expandAbbreviations(appState.fieldValues.reinspectionReason || "");
-
   const parts = [
     "Greetings from PolicyBazaar.com!",
-    "This is with reference to your request."
+    "This is in reference to your request regarding your Car Insurance policy."
   ];
 
-  if (s.reinspection && reason.trim()) {
-    parts.push(`Note: We request you to upload the video again because ${reason.trim()}.`);
-  }
-
-  parts.push("Note: Please ensure that the CNG cylinder is also clearly captured if the vehicle has an externally fitted CNG kit.");
-
-  if (s.rcNote) {
-    parts.push("Note: Please ensure to clearly capture the RC (Registration Certificate) in the video. Alternatively, you may send a copy of the RC separately by replying to this email or on WhatsApp at 8506013131 from your registered mobile number.");
-  }
-
   parts.push(
+    "Note: Please ensure that the CNG cylinder is clearly captured if your vehicle has an externally fitted CNG kit.",
     "Inspection of your vehicle is mandatory for us to proceed with the requested changes in your policy.",
-    "Please follow the below guidelines to upload a self-video inspection of your vehicle:",
-    "For Android:\nhttps://play.google.com/store/apps/details?id=com.policybazaar&hl=en-GB&pli=1&pid=mobile_hamburger&c=mobile_hamburger_dropdown",
-    "For iOS:\nhttps://apps.apple.com/in/app/id956740142?mt=8",
+    "Please follow the guidelines below to upload a self-video inspection of your vehicle:",
+    "For Android: Download the PolicyBazaar App\nhttps://play.google.com/store/apps/details?id=com.policybazaar&hl=en-GB&pli=1&pid=mobile_hamburger&c=mobile_hamburger_dropdown",
+    "For iOS: Download the PolicyBazaar App\nhttps://apps.apple.com/in/app/id956740142?mt=8",
     "Mobile Phone Requirements:\n\n\u2022 Android smartphone with Android version 5.0 or above OR an iOS device.\n\u2022 Mobile camera should be 4 MP or above.\n\u2022 Mobile data or Wi-Fi connection must be enabled.",
     "Things to Remember:\n\n\u2022 Capture the video in daylight, preferably before 6:00 PM on a clear day.\n\u2022 Avoid recording in basements, under shades, under trees, parking areas, or beneath electricity wires.\n\u2022 Ensure the vehicle is in a clean condition.\n\u2022 In case of dents or scratches, capture the affected area clearly by moving the mobile closer.\n\u2022 Ensure that the vehicle remains in focus throughout the video recording.",
     "Please read the instructions carefully before starting the video capture process:\n\n" +
@@ -2119,12 +2109,14 @@ function buildVideoInspection() {
     "4. Enter your Mobile Number and Vehicle Registration Number, including all digits and letters.\n" +
     "5. Keep the RC (Registration Certificate) and Previous Year Policy ready.\n" +
     "6. Open the bonnet and start making the video as guided in the application.\n" +
-    "7. Record the RC and Previous Year Policy.\n" +
-    "8. Start the engine and record the Odometer reading. A reading captured in trip mode will not be valid.\n" +
-    "9. Capture the external view of the vehicle.\n" +
-    "10. Record the Engine Number and Chassis Number, which may be located under the front bonnet or below/beside the driver/front passenger seat.\n" +
-    "11. Close the bonnet and record a complete 360-degree view of the vehicle as guided on the screen. Maintain an approximate distance of 2-3 feet from the vehicle.\n" +
-    "12. After completing the recording, click the Upload button and ensure that you exit the screen only after the upload is completed successfully.",
+    "7. First, sit in the driving seat and record the front windshield glass from inside, corner to corner, top to bottom, left to right.\n" +
+    "8. If your car has a sunroof, record the sunroof glass corner to corner.\n" +
+    "9. Record the RC and Previous Year Policy.\n" +
+    "10. Start the engine and record the Odometer reading. A reading captured in trip mode will not be valid.\n" +
+    "11. Capture the external view of the vehicle.\n" +
+    "12. Record the Engine Number and Chassis Number, which may be located under the front bonnet or below/beside the driver/front passenger seat.\n" +
+    "13. Close the bonnet and record a complete 360-degree view of the vehicle as guided on the screen. Maintain an approximate distance of 2-3 feet from the vehicle.\n" +
+    "14. After completing the recording, click the Upload button and ensure that you exit the screen only after the upload is completed successfully.",
     "Once you successfully upload the video, kindly let us know so that we can proceed further with your request."
   );
 
